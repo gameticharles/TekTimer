@@ -115,6 +115,53 @@ pub fn add_extra_time(
 }
 
 #[tauri::command]
+pub fn update_timer(
+    state: tauri::State<'_, AppState>,
+    id: String,
+    new_duration_seconds: Option<u64>,
+    new_label: Option<String>,
+) -> Result<TimerState, String> {
+    let mut map = state.timers.lock().map_err(|e| e.to_string())?;
+    let timer = map.get_mut(&id).ok_or("Timer not found")?;
+
+    if let Some(label) = new_label {
+        timer.label = label;
+    }
+
+    if let Some(new_duration) = new_duration_seconds {
+        // Calculate the difference between the new duration and the old duration
+        let diff = new_duration as i64 - timer.duration_seconds as i64;
+        
+        timer.duration_seconds = new_duration;
+
+        // Apply difference to remaining_seconds and clamp to 0
+        timer.remaining_seconds = (timer.remaining_seconds as i64 + diff).max(0) as u64;
+
+        if timer.status == TimerStatus::Running {
+            if let Some(end) = timer.end_time_unix.as_mut() {
+                // Adjust the end time based on the difference
+                *end = (*end as i64 + diff).max(0) as u64;
+            }
+        }
+
+        // If the timer had ended but we added time, we don't automatically revive it
+        // like we do with add_extra_time. The user editing the duration might just be
+        // fixing a mistake or resetting it manually. But if remaining > 0 and status is Ended,
+        // we should probably bump it back to Paused or Idle.
+        if timer.status == TimerStatus::Ended && timer.remaining_seconds > 0 {
+            timer.status = TimerStatus::Paused;
+            timer.end_time_unix = None;
+        } else if timer.remaining_seconds == 0 {
+            // If they shortened the duration to less than what had already elapsed, end it
+            timer.status = TimerStatus::Ended;
+            timer.end_time_unix = None;
+        }
+    }
+
+    Ok(timer.clone())
+}
+
+#[tauri::command]
 pub fn pause_all_timers(
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {

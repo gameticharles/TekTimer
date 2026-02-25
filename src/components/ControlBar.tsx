@@ -36,7 +36,7 @@ export default function ControlBar({
 }: ControlBarProps) {
     return (
         <div
-            className={`absolute bottom-0 left-0 right-0 px-6 py-4 bg-gradient-to-t from-black/80 to-transparent
+            className={`absolute bottom-0 left-0 right-0 px-6 py-4 bg-gradient-to-t from-gray-50/90 dark:from-black/80 to-transparent
                   flex items-center justify-between transition-all duration-300
                   ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
         >
@@ -44,8 +44,8 @@ export default function ControlBar({
             <div className="flex items-center gap-2">
                 <button
                     onClick={onExit}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white 
-                     hover:bg-white/10 transition-all text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white 
+                     hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all text-sm"
                     aria-label="Back to home"
                 >
                     <ArrowLeft size={16} />
@@ -58,20 +58,20 @@ export default function ControlBar({
                 {/* Font Size Controls */}
                 <button
                     onClick={onDecreaseFontSize}
-                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all"
                     aria-label="Decrease font size"
                 >
                     <Minus size={16} />
                 </button>
                 <button
                     onClick={onIncreaseFontSize}
-                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all"
                     aria-label="Increase font size"
                 >
                     <Plus size={16} />
                 </button>
 
-                <div className="w-px h-6 bg-gray-700 mx-1" />
+                <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
 
                 {/* Play / Pause */}
                 {(status === 'Idle' || status === 'Paused') && (
@@ -99,8 +99,8 @@ export default function ControlBar({
                 {/* Reset */}
                 <button
                     onClick={onReset}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-700 text-gray-200 
-                     font-medium hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 
+                     font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
                     disabled={status === 'Idle'}
                 >
                     <RotateCcw size={16} />
@@ -112,7 +112,7 @@ export default function ControlBar({
             <div className="flex items-center gap-2">
                 <button
                     onClick={onAnnounce}
-                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all"
                     aria-label="Manual Announcement"
                     title="Announce"
                 >
@@ -120,7 +120,7 @@ export default function ControlBar({
                 </button>
                 <button
                     onClick={onBlackout}
-                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all"
                     aria-label="Blackout screen"
                     title="Blackout (B)"
                 >
@@ -128,14 +128,14 @@ export default function ControlBar({
                 </button>
                 <button
                     onClick={onSettings}
-                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all"
                     aria-label="Settings"
                 >
                     <Settings size={18} />
                 </button>
                 <button
                     onClick={onToggleFullscreen}
-                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-white/10 transition-all"
                     aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 >
                     {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}

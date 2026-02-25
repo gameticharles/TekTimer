@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, RotateCcw, X, Clock, Mic } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil } from 'lucide-react';
 import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
 import { getBaseClampKey } from '../lib/gridLayout';
 import FontSizeControl from './FontSizeControl';
@@ -17,6 +17,7 @@ interface TimerCardProps {
     onPause: (id: string) => void;
     onReset: (id: string) => void;
     onDelete: (id: string) => void;
+    onEdit?: (id: string) => void;
     onDismiss: (id: string) => void;
     onAddExtraTime: (id: string) => void;
     onFontSizeChange: (id: string, scale: number) => void;
@@ -47,6 +48,7 @@ export default function TimerCard({
     onPause,
     onReset,
     onDelete,
+    onEdit,
     onDismiss,
     onAddExtraTime,
     onFontSizeChange,
@@ -91,13 +93,24 @@ export default function TimerCard({
                         {timer.program && <span className={`font-normal ml-3 ${timer.isDismissed ? 'text-gray-400 dark:text-gray-700' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-4xl lg:text-5xl' : timerCount === 2 ? 'text-xl' : 'text-lg'}`}>· {timer.program}</span>}
                     </h3>
                 </div>
-                <button
-                    onClick={() => onDelete(timer.id)}
-                    className={`p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-2 ${!onUpdateSchedule ? 'opacity-0 pointer-events-none' : ''} ${timerCount === 1 ? 'transform scale-150 mr-2' : ''}`}
-                    aria-label="Delete timer"
-                >
-                    <X size={14} />
-                </button>
+                <div className="flex items-center">
+                    {onEdit && (
+                        <button
+                            onClick={() => onEdit(timer.id)}
+                            className={`p-1 rounded text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors ${timerCount === 1 ? 'transform scale-150 mr-3' : 'mr-1'}`}
+                            aria-label="Edit timer"
+                        >
+                            <Pencil size={14} />
+                        </button>
+                    )}
+                    <button
+                        onClick={() => onDelete(timer.id)}
+                        className={`p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-2 ${!onUpdateSchedule ? 'opacity-0 pointer-events-none' : ''} ${timerCount === 1 ? 'transform scale-150 mr-2' : ''}`}
+                        aria-label="Delete timer"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
             </div>
 
             {/* Progress Bar */}

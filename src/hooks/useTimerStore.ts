@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { load } from '@tauri-apps/plugin-store';
-import type { AnyTimer, QuizTimer, ExamTimer, TimerTickPayload, AppSettings } from '../lib/types';
+import type { AnyTimer, QuizTimer, ExamTimer, TimerTickPayload, AppSettings, TimerStatus } from '../lib/types';
 import { SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 import { announcementQueue, resolveTemplate, enhanceWithLLM } from '../lib/announcements';
 
@@ -178,9 +178,43 @@ export function useTimerStore(settings: AppSettings) {
                 return next;
             });
 
-            return result.id;
         },
         [],
+    );
+
+    const updateExamTimer = useCallback(
+        async (
+            id: string,
+            updates: { courseCode: string; program: string; studentCount: number; durationSeconds: number }
+        ) => {
+            const label = `${updates.courseCode} · ${updates.program}`;
+
+            // Re-calculate the backend timer adjustments via new invoke command
+            const result = await invoke<{ remaining_seconds: number, status: TimerStatus, end_time_unix: number | null }>('update_timer', {
+                id,
+                newDurationSeconds: updates.durationSeconds,
+                newLabel: label
+            });
+
+            // Update local state
+            setTimers((prev) =>
+                prev.map((t) => {
+                    if (t.id !== id || t.mode !== 'exam') return t;
+                    return {
+                        ...t,
+                        courseCode: updates.courseCode,
+                        program: updates.program,
+                        studentCount: updates.studentCount,
+                        durationSeconds: updates.durationSeconds,
+                        remainingSeconds: result.remaining_seconds,
+                        status: result.status,
+                        endTimeUnix: result.end_time_unix,
+                        label
+                    };
+                }),
+            );
+        },
+        []
     );
 
     // ── Timer Actions ─────────────────────────────────────────────────
@@ -329,6 +363,7 @@ export function useTimerStore(settings: AppSettings) {
         timers,
         createQuizTimer,
         createExamTimer,
+        updateExamTimer,
         startTimer,
         pauseTimer,
         resetTimer,

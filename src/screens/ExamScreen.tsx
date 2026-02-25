@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import TimerCard from '../components/TimerCard';
 import AddExamTimerModal from '../components/AddExamTimerModal';
+import EditExamTimerModal from '../components/EditExamTimerModal';
 import ExtraTimeModal from '../components/ExtraTimeModal';
 import EmptyState from '../components/EmptyState';
 import BlackoutScreen from '../components/BlackoutScreen';
@@ -26,6 +27,7 @@ interface ExamScreenProps {
 
 export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenProps) {
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editTimerId, setEditTimerId] = useState<string | null>(null);
     const [extraTimeTimerId, setExtraTimeTimerId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'center'>('grid');
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
@@ -275,6 +277,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                                 onPause={store.pauseTimer}
                                 onReset={store.resetTimer}
                                 onDelete={store.deleteTimer}
+                                onEdit={setEditTimerId}
                                 onDismiss={store.dismissTimer}
                                 onAddExtraTime={setExtraTimeTimerId}
                                 onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
@@ -293,6 +296,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     onPause={store.pauseTimer}
                     onReset={store.resetTimer}
                     onDelete={store.deleteTimer}
+                    onEdit={setEditTimerId}
                     onDismiss={store.dismissTimer}
                     onReorder={store.reorderTimers}
                     onAddExtraTime={setExtraTimeTimerId}
@@ -307,6 +311,14 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     onAdd={handleAddTimer}
                     onClose={() => setShowAddModal(false)}
                     timerCount={examTimers.length}
+                />
+            )}
+
+            {editTimerId && (
+                <EditExamTimerModal
+                    timer={examTimers.find(t => t.id === editTimerId)!}
+                    onUpdate={store.updateExamTimer}
+                    onClose={() => setEditTimerId(null)}
                 />
             )}
 

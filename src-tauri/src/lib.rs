@@ -65,6 +65,7 @@ pub fn run() {
             commands::resume_all_timers,
             commands::set_fullscreen,
             commands::sync_timers,
+            commands::update_timer,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

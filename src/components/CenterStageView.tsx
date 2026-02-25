@@ -12,6 +12,7 @@ interface CenterStageViewProps {
     onPause: (id: string) => void;
     onReset: (id: string) => void;
     onDelete: (id: string) => void;
+    onEdit?: (id: string) => void;
     onDismiss: (id: string) => void;
     onAddExtraTime: (id: string) => void;
     onFontSizeChange: (id: string, scale: number) => void;

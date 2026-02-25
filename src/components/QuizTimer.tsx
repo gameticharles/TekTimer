@@ -11,15 +11,15 @@ function getVisualState(timer: QuizTimerType, settings: AppSettings) {
     const { status, remainingSeconds, isDismissed } = timer;
     const { warningThresholdSeconds: warn, criticalThresholdSeconds: crit } = settings;
 
-    if (isDismissed) return { bg: 'bg-gray-950', textColor: 'text-gray-600', anim: '', labelColor: 'text-gray-700' };
-    if (status === 'Ended') return { bg: 'bg-red-950', textColor: 'text-white animate-blink', anim: '', labelColor: 'text-red-200' };
+    if (isDismissed) return { bg: 'bg-gray-50 dark:bg-gray-950', textColor: 'text-gray-300 dark:text-gray-600', anim: '', labelColor: 'text-gray-400 dark:text-gray-700' };
+    if (status === 'Ended') return { bg: 'bg-red-50 dark:bg-red-950', textColor: 'text-red-600 dark:text-white animate-blink', anim: '', labelColor: 'text-red-500 dark:text-red-200' };
     if (status === 'Running' && remainingSeconds <= 10)
-        return { bg: 'bg-gray-950', textColor: 'text-red-400', anim: 'animate-glow-critical', labelColor: 'text-red-300' };
+        return { bg: 'bg-white dark:bg-gray-950', textColor: 'text-red-500 dark:text-red-400', anim: 'animate-glow-critical', labelColor: 'text-red-400 dark:text-red-300' };
     if (remainingSeconds <= crit && status === 'Running')
-        return { bg: 'bg-gray-950', textColor: 'text-red-400', anim: 'animate-glow-critical', labelColor: 'text-red-300' };
+        return { bg: 'bg-white dark:bg-gray-950', textColor: 'text-red-500 dark:text-red-400', anim: 'animate-glow-critical', labelColor: 'text-red-400 dark:text-red-300' };
     if (remainingSeconds <= warn && status === 'Running')
-        return { bg: 'bg-gray-950', textColor: 'text-amber-400', anim: 'animate-glow-warning', labelColor: 'text-amber-300' };
-    return { bg: 'bg-gray-950', textColor: 'text-white', anim: '', labelColor: 'text-gray-400' };
+        return { bg: 'bg-white dark:bg-gray-950', textColor: 'text-amber-500 dark:text-amber-400', anim: 'animate-glow-warning', labelColor: 'text-amber-600 dark:text-amber-300' };
+    return { bg: 'bg-white dark:bg-gray-950', textColor: 'text-gray-900 dark:text-white', anim: '', labelColor: 'text-gray-500 dark:text-gray-400' };
 }
 
 export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
@@ -56,7 +56,7 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
 
             {/* Status indicator */}
             {timer.status === 'Paused' && (
-                <p className="text-amber-400/70 text-lg mt-4 animate-pulse font-medium">
+                <p className="text-amber-600/70 dark:text-amber-400/70 text-lg mt-4 animate-pulse font-medium">
                     ⏸ PAUSED
                 </p>
             )}
@@ -64,7 +64,7 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
             {/* End message overlay */}
             {timer.status === 'Ended' && !timer.isDismissed && (
                 <div className="mt-8">
-                    <p className="text-3xl font-bold text-white text-center animate-pulse">
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white text-center animate-pulse">
                         {settings.endMessage}
                     </p>
                 </div>
