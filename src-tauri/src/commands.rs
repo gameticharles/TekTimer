@@ -157,3 +157,27 @@ pub fn set_fullscreen(
         .set_fullscreen(fullscreen)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn sync_timers(
+    state: tauri::State<'_, AppState>,
+    timers: Vec<TimerState>,
+) -> Result<(), String> {
+    let now = unix_now();
+    let mut map = state.timers.lock().map_err(|e| e.to_string())?;
+    map.clear();
+    for mut timer in timers {
+        if timer.status == TimerStatus::Running {
+            if let Some(end_time) = timer.end_time_unix {
+                if end_time > now {
+                    timer.remaining_seconds = end_time - now;
+                } else {
+                    timer.remaining_seconds = 0;
+                    timer.status = TimerStatus::Ended;
+                }
+            }
+        }
+        map.insert(timer.id.clone(), timer);
+    }
+    Ok(())
+}

@@ -4,6 +4,7 @@ import QuizTimerDisplay from '../components/QuizTimer';
 import ControlBar from '../components/ControlBar';
 import ProgressBar from '../components/ProgressBar';
 import BlackoutScreen from '../components/BlackoutScreen';
+import AnnouncementModal from '../components/AnnouncementModal';
 import type { AppSettings, QuizTimer } from '../lib/types';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useIdleControls } from '../hooks/useIdleControls';
@@ -21,6 +22,7 @@ interface QuizScreenProps {
 
 export default function QuizScreen({ settings, onUpdateSettings, onExit, onSettings }: QuizScreenProps) {
     const [showSetup, setShowSetup] = useState(true);
+    const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { controlsVisible } = useIdleControls();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
@@ -138,6 +140,7 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
                         onReset={() => store.resetTimer(timer.id)}
                         onToggleFullscreen={toggleFullscreen}
                         onBlackout={enableBlackout}
+                        onAnnounce={() => setShowAnnounceModal(true)}
                         onIncreaseFontSize={() =>
                             onUpdateSettings({ globalFontScale: Math.min(200, settings.globalFontScale + SCALE_STEP) })
                         }
@@ -155,6 +158,15 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
                 <div className="h-full w-full flex items-center justify-center">
                     <p className="text-gray-500 text-lg">No timer configured</p>
                 </div>
+            )}
+
+            {/* Modals */}
+            {showAnnounceModal && timer && (
+                <AnnouncementModal
+                    settings={settings}
+                    timers={[timer]}
+                    onClose={() => setShowAnnounceModal(false)}
+                />
             )}
         </div>
     );

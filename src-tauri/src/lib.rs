@@ -1,14 +1,16 @@
 mod commands;
 mod timer;
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tauri::Emitter;
 use timer::{unix_now, TimerStatus};
 
 fn start_tick_loop(
     app_handle: tauri::AppHandle,
     timers: Arc<std::sync::Mutex<std::collections::HashMap<String, timer::TimerState>>>,
 ) {
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             let now = unix_now();
@@ -33,8 +35,9 @@ fn start_tick_loop(
                     "timer-tick",
                     serde_json::json!({
                         "id": timer.id,
-                        "remainingSeconds": remaining,
+                        "remaining_seconds": remaining,
                         "status": timer.status,
+                        "end_time_unix": timer.end_time_unix,
                     }),
                 );
             }
@@ -61,6 +64,7 @@ pub fn run() {
             commands::pause_all_timers,
             commands::resume_all_timers,
             commands::set_fullscreen,
+            commands::sync_timers,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

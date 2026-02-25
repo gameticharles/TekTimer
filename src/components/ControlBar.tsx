@@ -1,6 +1,6 @@
 import {
     Play, Pause, RotateCcw, Maximize, Minimize, Moon,
-    Plus, Minus, Settings, ArrowLeft
+    Plus, Minus, Settings, ArrowLeft, Mic
 } from 'lucide-react';
 
 interface ControlBarProps {
@@ -12,6 +12,7 @@ interface ControlBarProps {
     onReset: () => void;
     onToggleFullscreen: () => void;
     onBlackout: () => void;
+    onAnnounce: () => void;
     onIncreaseFontSize: () => void;
     onDecreaseFontSize: () => void;
     onSettings: () => void;
@@ -27,6 +28,7 @@ export default function ControlBar({
     onReset,
     onToggleFullscreen,
     onBlackout,
+    onAnnounce,
     onIncreaseFontSize,
     onDecreaseFontSize,
     onSettings,
@@ -108,6 +110,14 @@ export default function ControlBar({
 
             {/* Right: View Controls */}
             <div className="flex items-center gap-2">
+                <button
+                    onClick={onAnnounce}
+                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                    aria-label="Manual Announcement"
+                    title="Announce"
+                >
+                    <Mic size={18} />
+                </button>
                 <button
                     onClick={onBlackout}
                     className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"

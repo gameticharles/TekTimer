@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { X, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { getTTSProvider } from '../lib/tts/getTTSProvider';
 import type { AppSettings } from '../lib/types';
 import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 
@@ -8,6 +10,33 @@ interface SettingsPanelProps {
     onReset: () => void;
     onClose: () => void;
 }
+
+function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings, onUpdate: (p: Partial<AppSettings>) => void }) {
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+    useEffect(() => {
+        const updateVoices = () => setVoices(window.speechSynthesis.getVoices());
+        updateVoices();
+        window.speechSynthesis.onvoiceschanged = updateVoices;
+    }, []);
+
+    return (
+        <div>
+            <label className="block text-sm text-gray-300 mb-1.5">Voice</label>
+            <select
+                value={settings.ttsVoiceId || ''}
+                onChange={(e) => onUpdate({ ttsVoiceId: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+            >
+                <option value="">Default System Voice</option>
+                {voices.map(v => (
+                    <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
 
 export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: SettingsPanelProps) {
     return (
@@ -197,6 +226,149 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                             />
                             <p className="text-xs text-gray-500 mt-1">{settings.endMessage.length}/60 characters</p>
                         </div>
+                    </section>
+
+                    {/* ─── ANNOUNCEMENTS ──────────────────────────────── */}
+                    <section>
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Announcements</h3>
+
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-sm text-gray-300">Enable Announcements</span>
+                            <button
+                                onClick={() => onUpdate({ announcementsEnabled: !settings.announcementsEnabled })}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.announcementsEnabled ? 'bg-emerald-600' : 'bg-gray-700'}`}
+                            >
+                                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.announcementsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        {settings.announcementsEnabled && (
+                            <div className="space-y-4 pl-2 border-l-2 border-gray-800">
+                                <div>
+                                    <label className="block text-sm text-gray-300 mb-1.5">Voice Provider</label>
+                                    <select
+                                        value={settings.ttsProvider}
+                                        onChange={(e) => onUpdate({ ttsProvider: e.target.value as any })}
+                                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                    >
+                                        <option value="web-speech">System Voice (Built-in)</option>
+                                        <option value="custom-api">Custom API (Local/KittenTTS)</option>
+                                    </select>
+                                </div>
+
+                                {settings.ttsProvider === 'web-speech' && (
+                                    <WebSpeechVoiceSelector settings={settings} onUpdate={onUpdate} />
+                                )}
+                                {settings.ttsProvider === 'custom-api' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm text-gray-300 mb-1.5">Custom API URL (POST endpoint)</label>
+                                            <input
+                                                type="text"
+                                                value={settings.customTTSUrl || ''}
+                                                onChange={(e) => onUpdate({ customTTSUrl: e.target.value })}
+                                                placeholder="http://localhost:8000/generate"
+                                                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-300 mb-1.5">Default Voice Name (e.g. Jasper)</label>
+                                            <input
+                                                type="text"
+                                                value={settings.customTTSVoice || ''}
+                                                onChange={(e) => onUpdate({ customTTSVoice: e.target.value })}
+                                                placeholder="Jasper"
+                                                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm text-gray-300">Speech Rate ({settings.ttsRate}x)</label>
+                                        <input
+                                            type="range" min="0.5" max="2.0" step="0.1"
+                                            value={settings.ttsRate}
+                                            onChange={(e) => onUpdate({ ttsRate: Number(e.target.value) })}
+                                            className="w-24 accent-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm text-gray-300">Volume ({Math.round(settings.ttsVolume * 100)}%)</label>
+                                        <input
+                                            type="range" min="0" max="1" step="0.1"
+                                            value={settings.ttsVolume}
+                                            onChange={(e) => onUpdate({ ttsVolume: Number(e.target.value) })}
+                                            className="w-24 accent-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        const provider = getTTSProvider(settings);
+                                        provider.speak("This is a test of your announcement system.", {
+                                            rate: settings.ttsRate,
+                                            volume: settings.ttsVolume,
+                                            voiceId: settings.ttsVoiceId || undefined
+                                        }).catch(e => console.error("Test voice failed", e));
+                                    }}
+                                    className="w-full py-2 mt-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium hover:bg-emerald-600/30 transition-colors"
+                                >
+                                    ▶ Test Voice
+                                </button>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* ─── AI GENERATION ──────────────────────────────── */}
+                    <section>
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">AI Message Generation</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-sm text-gray-300">Generate announcements with AI</span>
+                            <button
+                                onClick={() => onUpdate({ llmEnabled: !settings.llmEnabled })}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.llmEnabled ? 'bg-emerald-600' : 'bg-gray-700'}`}
+                            >
+                                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.llmEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+                        {settings.llmEnabled && (
+                            <div className="space-y-4 pl-2 border-l-2 border-gray-800">
+                                <div>
+                                    <label className="block text-sm text-gray-300 mb-1.5">LLM Provider</label>
+                                    <select
+                                        value={settings.llmProvider || ''}
+                                        onChange={(e) => onUpdate({ llmProvider: e.target.value as any })}
+                                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                    >
+                                        <option value="ollama">Ollama (Local)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-300 mb-1.5">Ollama API URL</label>
+                                    <input
+                                        type="text"
+                                        value={settings.ollamaUrl || ''}
+                                        onChange={(e) => onUpdate({ ollamaUrl: e.target.value })}
+                                        placeholder="http://localhost:11434"
+                                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-300 mb-1.5">Ollama Model</label>
+                                    <input
+                                        type="text"
+                                        value={settings.llmModel || ''}
+                                        onChange={(e) => onUpdate({ llmModel: e.target.value })}
+                                        placeholder="llama3.1"
+                                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500">Requires Ollama running locally.</p>
+                            </div>
+                        )}
                     </section>
 
                     {/* ─── RESET ──────────────────────────────────────── */}

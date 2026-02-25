@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft,
+    Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid, Presentation, Mic
 } from 'lucide-react';
 import TimerCard from '../components/TimerCard';
 import AddExamTimerModal from '../components/AddExamTimerModal';
 import ExtraTimeModal from '../components/ExtraTimeModal';
 import EmptyState from '../components/EmptyState';
 import BlackoutScreen from '../components/BlackoutScreen';
+import CenterStageView from '../components/CenterStageView';
+import AnnouncementModal from '../components/AnnouncementModal';
 import type { AppSettings, ExamTimer } from '../lib/types';
 import { useTimerStore } from '../hooks/useTimerStore';
 import { useFullscreen } from '../hooks/useFullscreen';
@@ -25,6 +27,8 @@ interface ExamScreenProps {
 export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [extraTimeTimerId, setExtraTimeTimerId] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'center'>('grid');
+    const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
@@ -62,6 +66,10 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
             }
             if (e.key === 'p' && !e.shiftKey) { store.pauseAll(); return; }
             if (e.key === 'P' && e.shiftKey) { store.resumeAll(); return; }
+            if (e.key === 'v' || e.key === 'V') {
+                setViewMode((prev) => (prev === 'grid' ? 'center' : 'grid'));
+                return;
+            }
         };
 
         window.addEventListener('keydown', handler);
@@ -159,6 +167,19 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
 
                     <div className="w-px h-5 bg-gray-700" />
 
+                    {/* View Toggle */}
+                    <button
+                        onClick={() => setViewMode((prev) => (prev === 'grid' ? 'center' : 'grid'))}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                       text-gray-300 hover:text-white hover:bg-white/10 transition-all"
+                        title="Toggle View (V)"
+                    >
+                        {viewMode === 'grid' ? <Presentation size={14} /> : <LayoutGrid size={14} />}
+                        {viewMode === 'grid' ? 'Center Stage' : 'Grid Layout'}
+                    </button>
+
+                    <div className="w-px h-5 bg-gray-700 mx-1" />
+
                     {/* Add Timer */}
                     <button
                         onClick={() => setShowAddModal(true)}
@@ -170,6 +191,18 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     >
                         <Plus size={14} />
                         Add
+                    </button>
+
+                    <div className="w-px h-5 bg-gray-700 mx-1" />
+
+                    {/* Announce */}
+                    <button
+                        onClick={() => setShowAnnounceModal(true)}
+                        disabled={examTimers.length === 0}
+                        className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Manual Announcement"
+                    >
+                        <Mic size={16} />
                     </button>
 
                     {/* Blackout */}
@@ -199,26 +232,42 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                 </div>
             </div>
 
-            {/* Timer Grid */}
-            <div className={getGridClass(examTimers.length) + ' gap-2 p-2'}>
-                {examTimers.map((timer, index) => (
-                    <div key={timer.id} className={getCardSpanClass(index, examTimers.length)}>
-                        <TimerCard
-                            timer={timer}
-                            settings={settings}
-                            timerCount={examTimers.length}
-                            onStart={store.startTimer}
-                            onPause={store.pauseTimer}
-                            onReset={store.resetTimer}
-                            onDelete={store.deleteTimer}
-                            onDismiss={store.dismissTimer}
-                            onAddExtraTime={setExtraTimeTimerId}
-                            onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
-                            onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
-                        />
-                    </div>
-                ))}
-            </div>
+            {/* Content Area */}
+            {viewMode === 'grid' ? (
+                <div className={getGridClass(examTimers.length) + ' gap-2 p-2 pt-14'}>
+                    {examTimers.map((timer, index) => (
+                        <div key={timer.id} className={getCardSpanClass(index, examTimers.length)}>
+                            <TimerCard
+                                timer={timer}
+                                settings={settings}
+                                timerCount={examTimers.length}
+                                onStart={store.startTimer}
+                                onPause={store.pauseTimer}
+                                onReset={store.resetTimer}
+                                onDelete={store.deleteTimer}
+                                onDismiss={store.dismissTimer}
+                                onAddExtraTime={setExtraTimeTimerId}
+                                onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
+                                onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
+                                onUpdateSchedule={(id, s) => store.updateAnnouncementSchedule(id, s)}
+                            />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <CenterStageView
+                    timers={examTimers}
+                    settings={settings}
+                    onStart={store.startTimer}
+                    onPause={store.pauseTimer}
+                    onReset={store.resetTimer}
+                    onDelete={store.deleteTimer}
+                    onDismiss={store.dismissTimer}
+                    onAddExtraTime={setExtraTimeTimerId}
+                    onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
+                    onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
+                />
+            )}
 
             {/* Modals */}
             {showAddModal && (
@@ -239,6 +288,14 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                         setExtraTimeTimerId(null);
                     }}
                     onClose={() => setExtraTimeTimerId(null)}
+                />
+            )}
+
+            {showAnnounceModal && (
+                <AnnouncementModal
+                    settings={settings}
+                    timers={examTimers}
+                    onClose={() => setShowAnnounceModal(false)}
                 />
             )}
         </div>

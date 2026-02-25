@@ -11,6 +11,16 @@ export interface TimerBase {
     status: TimerStatus;
     isDismissed: boolean;
     fontSizeOverride: number | null;
+    announcementSchedule: AnnouncementEntry[];
+    endTimeUnix: number | null;
+}
+
+export interface AnnouncementEntry {
+    id: string;
+    triggerAtSeconds: number;
+    message: string;
+    enabled: boolean;
+    hasBeenSpoken: boolean;
 }
 
 export interface QuizTimer extends TimerBase {
@@ -29,11 +39,14 @@ export type AnyTimer = QuizTimer | ExamTimer;
 // ─── Tick Payload (from Rust) ────────────────────────────────────
 export interface TimerTickPayload {
     id: string;
-    remainingSeconds: number;
+    remaining_seconds: number;
     status: TimerStatus;
+    end_time_unix: number | null;
 }
 
 // ─── Settings ────────────────────────────────────────────────────
+export type TTSProviderType = 'web-speech' | 'custom-api';
+
 export interface AppSettings {
     globalFontScale: number;
     warningThresholdSeconds: number;
@@ -44,7 +57,27 @@ export interface AppSettings {
     endMessage: string;
     showProgressBar: boolean;
     darkMode: boolean;
+
+    // ─── Announcements ───────────────────────────────────────────────
+    announcementsEnabled: boolean;
+    ttsProvider: TTSProviderType;
+    ttsVoiceId: string | null;
+    ttsRate: number;
+    ttsVolume: number;
+
+    customTTSUrl: string;
+    customTTSVoice: string | null;
+
+    llmEnabled: boolean;
+    llmProvider: 'ollama' | null;
+    llmModel: string;
+    ollamaUrl: string;
+
+    defaultAnnouncementSchedule: AnnouncementEntry[];
+    quickPickMessages: string[];
 }
+
+import { DEFAULT_ANNOUNCEMENT_SCHEDULE } from './announcements/defaultSchedule';
 
 export const DEFAULT_SETTINGS: AppSettings = {
     globalFontScale: 100,
@@ -56,4 +89,26 @@ export const DEFAULT_SETTINGS: AppSettings = {
     endMessage: "Time's Up — Pens Down",
     showProgressBar: true,
     darkMode: true,
+
+    announcementsEnabled: true,
+    ttsProvider: 'web-speech',
+    ttsVoiceId: null,
+    ttsRate: 0.9,
+    ttsVolume: 1.0,
+
+    customTTSUrl: 'http://localhost:8000/generate',
+    customTTSVoice: 'Jasper',
+
+    llmEnabled: false,
+    llmProvider: null,
+    llmModel: 'llama3.1',
+    ollamaUrl: 'http://localhost:11434',
+
+    defaultAnnouncementSchedule: DEFAULT_ANNOUNCEMENT_SCHEDULE,
+    quickPickMessages: [
+        'All papers collected.',
+        'Please remain seated.',
+        'Check your name is on your paper.',
+        'Pens down now.'
+    ],
 };

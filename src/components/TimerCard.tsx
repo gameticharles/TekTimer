@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Play, Pause, RotateCcw, X, Clock } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Clock, Mic } from 'lucide-react';
 import { formatTime } from '../lib/formatTime';
 import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
 import { getBaseClampKey } from '../lib/gridLayout';
 import FontSizeControl from './FontSizeControl';
 import ProgressBar from './ProgressBar';
 import DismissOverlay from './DismissOverlay';
-import type { ExamTimer, AppSettings } from '../lib/types';
+import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
+import type { ExamTimer, AppSettings, AnnouncementEntry } from '../lib/types';
 
 interface TimerCardProps {
     timer: ExamTimer;
@@ -20,6 +21,7 @@ interface TimerCardProps {
     onAddExtraTime: (id: string) => void;
     onFontSizeChange: (id: string, scale: number) => void;
     onFontSizeReset: (id: string) => void;
+    onUpdateSchedule?: (id: string, schedule: AnnouncementEntry[]) => void;
 }
 
 function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
@@ -49,8 +51,10 @@ export default function TimerCard({
     onAddExtraTime,
     onFontSizeChange,
     onFontSizeReset,
+    onUpdateSchedule,
 }: TimerCardProps) {
     const [recentExtraTime, setRecentExtraTime] = useState<number | null>(null);
+    const [showScheduleEditor, setShowScheduleEditor] = useState(false);
     const { bg, textColor, anim, border } = getCardVisualState(timer, settings);
 
     const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
@@ -135,6 +139,17 @@ export default function TimerCard({
                 />
 
                 <div className="flex items-center gap-1.5">
+                    {/* Edit Announcements */}
+                    {onUpdateSchedule && settings.announcementsEnabled && (
+                        <button
+                            onClick={() => setShowScheduleEditor(true)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-400 hover:bg-gray-700 transition-colors"
+                            title="Edit Announcement Schedule"
+                        >
+                            <Mic size={14} />
+                        </button>
+                    )}
+
                     {/* Extra Time */}
                     <button
                         onClick={() => onAddExtraTime(timer.id)}
@@ -181,6 +196,14 @@ export default function TimerCard({
                     </button>
                 </div>
             </div>
+            {showScheduleEditor && onUpdateSchedule && (
+                <AnnouncementScheduleEditor
+                    timer={timer}
+                    settings={settings}
+                    onSave={(schedule) => onUpdateSchedule(timer.id, schedule)}
+                    onClose={() => setShowScheduleEditor(false)}
+                />
+            )}
         </div>
     );
 }

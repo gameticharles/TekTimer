@@ -3,6 +3,8 @@ import HomeScreen from './screens/HomeScreen';
 import QuizScreen from './screens/QuizScreen';
 import ExamScreen from './screens/ExamScreen';
 import SettingsPanel from './components/SettingsPanel';
+import AnnouncementStatusBar from './components/AnnouncementStatusBar';
+import AnnouncementToast from './components/AnnouncementToast';
 import { useSettings } from './hooks/useSettings';
 import type { AppMode } from './lib/types';
 
@@ -55,6 +57,14 @@ export default function App() {
           onExit={() => setMode('home')}
           onSettings={() => setSettingsOpen(true)}
         />
+      )}
+
+      {/* Global TTS Status Bar and Subtitles */}
+      {settings.announcementsEnabled && (
+        <>
+          <AnnouncementStatusBar />
+          <AnnouncementToast />
+        </>
       )}
     </>
   );
