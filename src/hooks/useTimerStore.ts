@@ -105,7 +105,7 @@ export function useTimerStore(settings: AppSettings) {
     const createQuizTimer = useCallback(
         async (label: string, durationSeconds: number, startImmediately: boolean) => {
             const result = await invoke<{ id: string }>('create_timer', {
-                duration_seconds: durationSeconds,
+                durationSeconds,
                 label,
             });
 
@@ -147,7 +147,7 @@ export function useTimerStore(settings: AppSettings) {
         ) => {
             const label = `${courseCode} · ${program}`;
             const result = await invoke<{ id: string }>('create_timer', {
-                duration_seconds: durationSeconds,
+                durationSeconds,
                 label,
             });
 
@@ -225,6 +225,19 @@ export function useTimerStore(settings: AppSettings) {
         setTimers((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
+    const reorderTimers = useCallback((sourceId: string, destId: string) => {
+        setTimers((prev) => {
+            const arr = [...prev];
+            const sourceIndex = arr.findIndex((t) => t.id === sourceId);
+            const destIndex = arr.findIndex((t) => t.id === destId);
+            if (sourceIndex === -1 || destIndex === -1) return prev;
+
+            const [moved] = arr.splice(sourceIndex, 1);
+            arr.splice(destIndex, 0, moved);
+            return arr;
+        });
+    }, []);
+
     const dismissTimer = useCallback((id: string) => {
         setTimers((prev) =>
             prev.map((t) => (t.id === id ? { ...t, isDismissed: true } : t)),
@@ -234,7 +247,7 @@ export function useTimerStore(settings: AppSettings) {
     // ── Extra Time ────────────────────────────────────────────────────
 
     const addExtraTime = useCallback(async (id: string, extraSeconds: number) => {
-        await invoke('add_extra_time', { id, extra_seconds: extraSeconds });
+        await invoke('add_extra_time', { id, extraSeconds });
         setTimers((prev) =>
             prev.map((t) => {
                 if (t.id !== id) return t;
@@ -320,6 +333,7 @@ export function useTimerStore(settings: AppSettings) {
         pauseTimer,
         resetTimer,
         deleteTimer,
+        reorderTimers,
         dismissTimer,
         addExtraTime,
         pauseAll,

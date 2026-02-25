@@ -29,6 +29,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
     const [extraTimeTimerId, setExtraTimeTimerId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'center'>('grid');
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
+    const [draggedId, setDraggedId] = useState<string | null>(null);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
@@ -88,6 +89,26 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
         },
         [store],
     );
+
+    // ── Drag & Drop ───────────────────────────────────────────────────
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        setDraggedId(id);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        if (draggedId && draggedId !== targetId) {
+            store.reorderTimers(draggedId, targetId);
+        }
+        setDraggedId(null);
+    };
 
     if (isBlackout) {
         return <BlackoutScreen onReveal={disableBlackout} />;
@@ -236,7 +257,16 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
             {viewMode === 'grid' ? (
                 <div className={getGridClass(examTimers.length) + ' gap-2 p-2 pt-14'}>
                     {examTimers.map((timer, index) => (
-                        <div key={timer.id} className={getCardSpanClass(index, examTimers.length)}>
+                        <div
+                            key={timer.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, timer.id)}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, timer.id)}
+                            onDragEnd={() => setDraggedId(null)}
+                            className={getCardSpanClass(index, examTimers.length) + ' h-full min-h-0 transition-opacity'}
+                            style={{ opacity: draggedId === timer.id ? 0.4 : 1 }}
+                        >
                             <TimerCard
                                 timer={timer}
                                 settings={settings}
@@ -258,11 +288,13 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                 <CenterStageView
                     timers={examTimers}
                     settings={settings}
+                    controlsVisible={controlsVisible}
                     onStart={store.startTimer}
                     onPause={store.pauseTimer}
                     onReset={store.resetTimer}
                     onDelete={store.deleteTimer}
                     onDismiss={store.dismissTimer}
+                    onReorder={store.reorderTimers}
                     onAddExtraTime={setExtraTimeTimerId}
                     onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
                     onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}

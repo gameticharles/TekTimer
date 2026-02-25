@@ -120,6 +120,21 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                 />
                             </button>
                         </div>
+
+                        {/* Ignore Completed in Center Stage */}
+                        <div className="flex items-center justify-between mt-4">
+                            <span className="text-sm text-gray-300">Hide ended timers in Center Stage</span>
+                            <button
+                                onClick={() => onUpdate({ ignoreCompletedInCenterStage: !settings.ignoreCompletedInCenterStage })}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.ignoreCompletedInCenterStage ? 'bg-emerald-600' : 'bg-gray-700'
+                                    }`}
+                            >
+                                <div
+                                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.ignoreCompletedInCenterStage ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                />
+                            </button>
+                        </div>
                     </section>
 
                     {/* ─── WARNINGS ───────────────────────────────────── */}

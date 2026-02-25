@@ -70,7 +70,7 @@ export default function TimerCard({
 
     return (
         <div
-            className={`${bg} border ${border} rounded-xl p-4 flex flex-col relative overflow-hidden transition-all duration-300`}
+            className={`${bg} border ${border} rounded-xl p-4 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full`}
             style={{ '--exam-clock-size': computedSize } as React.CSSProperties}
         >
             {/* Dismiss Overlay */}
@@ -86,16 +86,16 @@ export default function TimerCard({
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-2">
+            <div className={`flex items-center justify-between ${timerCount === 1 ? 'mb-4' : 'mb-2'}`}>
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white truncate">
+                    <h3 className={`font-bold text-white truncate leading-normal py-1 ${timerCount === 1 ? 'text-3xl md:text-5xl lg:text-6xl' : timerCount === 2 ? 'text-2xl' : 'text-xl'}`}>
                         {timer.courseCode}
-                        <span className="text-gray-400 font-normal ml-2">· {timer.program}</span>
+                        <span className={`text-gray-400 font-normal ml-3 ${timerCount === 1 ? 'text-2xl md:text-4xl lg:text-5xl' : timerCount === 2 ? 'text-xl' : 'text-lg'}`}>· {timer.program}</span>
                     </h3>
                 </div>
                 <button
                     onClick={() => onDelete(timer.id)}
-                    className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-2"
+                    className={`p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-2 ${!onUpdateSchedule ? 'opacity-0 pointer-events-none' : ''} ${timerCount === 1 ? 'transform scale-150 mr-2' : ''}`}
                     aria-label="Delete timer"
                 >
                     <X size={14} />

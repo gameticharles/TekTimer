@@ -57,6 +57,7 @@ export interface AppSettings {
     endMessage: string;
     showProgressBar: boolean;
     darkMode: boolean;
+    ignoreCompletedInCenterStage: boolean;
 
     // ─── Announcements ───────────────────────────────────────────────
     announcementsEnabled: boolean;
@@ -89,6 +90,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     endMessage: "Time's Up — Pens Down",
     showProgressBar: true,
     darkMode: true,
+    ignoreCompletedInCenterStage: true,
 
     announcementsEnabled: true,
     ttsProvider: 'web-speech',

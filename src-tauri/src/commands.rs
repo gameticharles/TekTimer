@@ -89,18 +89,18 @@ pub fn delete_timer(
 pub fn add_extra_time(
     state: tauri::State<'_, AppState>,
     id: String,
-    extra_seconds: u64,
+    extraSeconds: u64,
 ) -> Result<TimerState, String> {
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     let timer = map.get_mut(&id).ok_or("Timer not found")?;
 
-    timer.duration_seconds += extra_seconds;
-    timer.remaining_seconds += extra_seconds;
+    timer.duration_seconds += extraSeconds;
+    timer.remaining_seconds += extraSeconds;
 
     // If currently running, push end_time forward by the same amount
     if timer.status == TimerStatus::Running {
         if let Some(end) = timer.end_time_unix.as_mut() {
-            *end += extra_seconds;
+            *end += extraSeconds;
         }
     }
 
