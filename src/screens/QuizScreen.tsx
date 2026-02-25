@@ -5,6 +5,7 @@ import ControlBar from '../components/ControlBar';
 import ProgressBar from '../components/ProgressBar';
 import BlackoutScreen from '../components/BlackoutScreen';
 import AnnouncementModal from '../components/AnnouncementModal';
+import EditQuizTimerModal from '../components/EditQuizTimerModal';
 import type { AppSettings, QuizTimer } from '../lib/types';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useIdleControls } from '../hooks/useIdleControls';
@@ -23,6 +24,7 @@ interface QuizScreenProps {
 export default function QuizScreen({ settings, onUpdateSettings, onExit, onSettings }: QuizScreenProps) {
     const [showSetup, setShowSetup] = useState(true);
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { controlsVisible } = useIdleControls();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
@@ -149,6 +151,8 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
                         }
                         onSettings={onSettings}
                         onExit={handleExit}
+                        onEdit={() => setShowEditModal(true)}
+                        onAddExtraTime={(seconds) => store.addExtraTime(timer.id, seconds)}
                     />
                 </>
             )}
@@ -166,6 +170,14 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
                     settings={settings}
                     timers={[timer]}
                     onClose={() => setShowAnnounceModal(false)}
+                />
+            )}
+
+            {showEditModal && timer && (
+                <EditQuizTimerModal
+                    timer={timer}
+                    onUpdate={(label, duration) => store.updateQuizTimer(timer.id, { label, durationSeconds: duration })}
+                    onClose={() => setShowEditModal(false)}
                 />
             )}
         </div>

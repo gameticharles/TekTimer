@@ -1,6 +1,6 @@
 import {
     Play, Pause, RotateCcw, Maximize, Minimize, Moon,
-    Plus, Minus, Settings, ArrowLeft, Mic
+    Plus, Minus, Settings, ArrowLeft, Mic, Pencil, Clock
 } from 'lucide-react';
 
 interface ControlBarProps {
@@ -17,6 +17,8 @@ interface ControlBarProps {
     onDecreaseFontSize: () => void;
     onSettings: () => void;
     onExit: () => void;
+    onEdit?: () => void;
+    onAddExtraTime?: (seconds: number) => void;
 }
 
 export default function ControlBar({
@@ -33,6 +35,8 @@ export default function ControlBar({
     onDecreaseFontSize,
     onSettings,
     onExit,
+    onEdit,
+    onAddExtraTime,
 }: ControlBarProps) {
     return (
         <div
@@ -106,6 +110,33 @@ export default function ControlBar({
                     <RotateCcw size={16} />
                     <span>Reset</span>
                 </button>
+
+                {/* Edit & Extra Time (Quiz Mode only) */}
+                {onEdit && (
+                    <>
+                        <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
+                        <button
+                            onClick={onEdit}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 
+                             font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                        >
+                            <Pencil size={15} />
+                            <span>Edit</span>
+                        </button>
+                    </>
+                )}
+
+                {onAddExtraTime && (
+                    <button
+                        onClick={() => onAddExtraTime(300)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 
+                         font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                        title="Add 5 minutes"
+                    >
+                        <Clock size={15} />
+                        <span>+5m</span>
+                    </button>
+                )}
             </div>
 
             {/* Right: View Controls */}

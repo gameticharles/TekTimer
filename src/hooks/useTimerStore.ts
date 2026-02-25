@@ -214,6 +214,31 @@ export function useTimerStore(settings: AppSettings) {
                 }),
             );
         },
+        [],
+    );
+
+    const updateQuizTimer = useCallback(
+        async (id: string, updates: { label: string; durationSeconds: number }) => {
+            const result = await invoke<{ remaining_seconds: number; status: TimerStatus; end_time_unix: number | null }>('update_timer', {
+                id,
+                newDurationSeconds: updates.durationSeconds,
+                newLabel: updates.label
+            });
+
+            setTimers((prev) =>
+                prev.map((t) => {
+                    if (t.id !== id || t.mode !== 'quiz') return t;
+                    return {
+                        ...t,
+                        label: updates.label,
+                        durationSeconds: updates.durationSeconds,
+                        remainingSeconds: result.remaining_seconds,
+                        status: result.status,
+                        endTimeUnix: result.end_time_unix
+                    };
+                }),
+            );
+        },
         []
     );
 
@@ -364,6 +389,7 @@ export function useTimerStore(settings: AppSettings) {
         createQuizTimer,
         createExamTimer,
         updateExamTimer,
+        updateQuizTimer,
         startTimer,
         pauseTimer,
         resetTimer,
