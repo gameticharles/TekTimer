@@ -15,16 +15,12 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
     const [minutes, setMinutes] = useState(0);
 
     const totalSeconds = hours * 3600 + minutes * 60;
-    const isValid =
-        courseCode.trim().length > 0 &&
-        program.trim().length > 0 &&
-        parseInt(studentCount, 10) >= 1 &&
-        totalSeconds >= 60;
+    const isValid = totalSeconds >= 60;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!isValid) return;
-        onAdd(courseCode.trim(), program.trim(), parseInt(studentCount, 10), totalSeconds);
+        onAdd(courseCode.trim(), program.trim(), parseInt(studentCount, 10) || 0, totalSeconds);
         onClose();
     };
 
@@ -50,7 +46,7 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
                             type="text"
                             value={courseCode}
                             onChange={(e) => setCourseCode(e.target.value)}
-                            placeholder="e.g. GEOM 261"
+                            placeholder="e.g. GEOM 261 (Optional)"
                             maxLength={20}
                             autoFocus
                             className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
@@ -66,7 +62,7 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
                             type="text"
                             value={program}
                             onChange={(e) => setProgram(e.target.value)}
-                            placeholder="e.g. BSc Geomatic Engineering"
+                            placeholder="e.g. BSc Geomatic Engineering (Optional)"
                             maxLength={80}
                             className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
                          text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50
@@ -79,11 +75,11 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
                         <label className="block text-sm font-medium text-gray-300 mb-1.5">Number of Students</label>
                         <input
                             type="number"
-                            min={1}
+                            min={0}
                             max={999}
                             value={studentCount}
                             onChange={(e) => setStudentCount(e.target.value)}
-                            placeholder="e.g. 45"
+                            placeholder="e.g. 45 (Optional)"
                             className="w-32 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
                          text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50
                          focus:ring-1 focus:ring-blue-500/20 transition-colors"

@@ -49,8 +49,8 @@ export default function MiniTimerCard({ timer, settings, isActive, onClick }: Mi
                   ${anim} flex flex-col gap-1.5 shadow-sm group`}
         >
             <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-white truncate max-w-[120px]" title={timer.courseCode}>
-                    {timer.courseCode}
+                <span className="text-sm font-bold text-white truncate max-w-[120px]" title={timer.courseCode || 'Timer'}>
+                    {timer.courseCode || 'Timer'}
                 </span>
 
                 {/* Status Icon */}

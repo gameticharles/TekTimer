@@ -143,18 +143,18 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
     }
 
     return (
-        <div className="h-screen w-screen relative overflow-hidden bg-gray-950">
+        <div className="h-screen w-screen relative overflow-hidden bg-gray-50 dark:bg-gray-950 transition-colors">
             {/* Toolbar */}
             <div
                 className={`absolute top-0 left-0 right-0 z-30 px-4 py-2 flex items-center justify-between
-                    bg-gradient-to-b from-black/80 to-transparent transition-all duration-300
+                    bg-gradient-to-b from-white/90 dark:from-black/80 to-transparent transition-all duration-300
                     ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
             >
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleExit}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white 
-                       hover:bg-white/10 transition-all text-sm"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white 
+                       hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all text-sm"
                     >
                         <ArrowLeft size={16} />
                         Exit
@@ -206,7 +206,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                         onClick={() => setShowAddModal(true)}
                         disabled={examTimers.length >= 5}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-                       text-gray-300 hover:text-white hover:bg-white/10 transition-all
+                       text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all
                        disabled:opacity-30 disabled:cursor-not-allowed"
                         title={examTimers.length >= 5 ? 'Maximum 5 sessions reached' : 'Add Timer (N)'}
                     >
@@ -214,13 +214,13 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                         Add
                     </button>
 
-                    <div className="w-px h-5 bg-gray-700 mx-1" />
+                    <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
 
                     {/* Announce */}
                     <button
                         onClick={() => setShowAnnounceModal(true)}
                         disabled={examTimers.length === 0}
-                        className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Manual Announcement"
                     >
                         <Mic size={16} />
@@ -229,7 +229,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     {/* Blackout */}
                     <button
                         onClick={enableBlackout}
-                        className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all"
                         title="Blackout (B)"
                     >
                         <Moon size={16} />
@@ -238,7 +238,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     {/* Settings */}
                     <button
                         onClick={onSettings}
-                        className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all"
                     >
                         <Settings size={16} />
                     </button>
@@ -246,7 +246,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     {/* Fullscreen */}
                     <button
                         onClick={toggleFullscreen}
-                        className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all"
                     >
                         {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
                     </button>

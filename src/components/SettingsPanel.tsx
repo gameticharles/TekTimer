@@ -42,18 +42,18 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
     return (
         <div className="fixed inset-0 z-40 flex justify-end">
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-gray-900/20 dark:bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
             {/* Panel */}
-            <div className="relative w-[420px] bg-gray-900 border-l border-gray-800 h-full overflow-y-auto shadow-2xl">
+            <div className="relative w-[420px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 h-full overflow-y-auto shadow-2xl transition-colors">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900 z-10 transition-colors">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         ⚙ Settings
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                        className="p-1.5 rounded-lg text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
                         <X size={18} />
                     </button>
@@ -66,23 +66,23 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
 
                         {/* Global Font Size */}
                         <div className="mb-4">
-                            <label className="block text-sm text-gray-300 mb-2">Global Font Size</label>
+                            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Global Font Size</label>
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => onUpdate({ globalFontScale: Math.max(SCALE_MIN, settings.globalFontScale - SCALE_STEP) })}
                                     disabled={settings.globalFontScale <= SCALE_MIN}
-                                    className="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 
+                                    className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 
                              disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold"
                                 >
                                     A−
                                 </button>
-                                <span className="text-white font-mono text-sm min-w-[3rem] text-center">
+                                <span className="text-gray-900 dark:text-white font-mono text-sm min-w-[3rem] text-center">
                                     {settings.globalFontScale}%
                                 </span>
                                 <button
                                     onClick={() => onUpdate({ globalFontScale: Math.min(SCALE_MAX, settings.globalFontScale + SCALE_STEP) })}
                                     disabled={settings.globalFontScale >= SCALE_MAX}
-                                    className="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 
+                                    className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 
                              disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold"
                                 >
                                     A+
@@ -106,27 +106,31 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                             </button>
                         </div>
 
-                        {/* Dark Mode */}
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-300">Dark Mode</span>
-                            <button
-                                onClick={() => onUpdate({ darkMode: !settings.darkMode })}
-                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.darkMode ? 'bg-emerald-600' : 'bg-gray-700'
-                                    }`}
-                            >
-                                <div
-                                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.darkMode ? 'translate-x-5' : 'translate-x-0'
-                                        }`}
-                                />
-                            </button>
+                        {/* Theme */}
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-300 mb-2">Theme</label>
+                            <div className="flex p-1 bg-gray-800 rounded-lg">
+                                {(['system', 'light', 'dark'] as const).map((t) => (
+                                    <button
+                                        key={t}
+                                        onClick={() => onUpdate({ theme: t })}
+                                        className={`flex-1 py-1.5 text-sm rounded-md transition-all font-medium capitalize ${settings.theme === t
+                                            ? 'bg-gray-600 text-white shadow'
+                                            : 'text-gray-400 hover:text-white'
+                                            }`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Ignore Completed in Center Stage */}
                         <div className="flex items-center justify-between mt-4">
-                            <span className="text-sm text-gray-300">Hide ended timers in Center Stage</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Hide ended timers in Center Stage</span>
                             <button
                                 onClick={() => onUpdate({ ignoreCompletedInCenterStage: !settings.ignoreCompletedInCenterStage })}
-                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.ignoreCompletedInCenterStage ? 'bg-emerald-600' : 'bg-gray-700'
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.ignoreCompletedInCenterStage ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'
                                     }`}
                             >
                                 <div
@@ -143,7 +147,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
 
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-300">Warning threshold</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Warning threshold</span>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="number"
@@ -156,15 +160,15 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                                 onUpdate({ warningThresholdSeconds: mins * 60 });
                                             }
                                         }}
-                                        className="w-16 px-2 py-1.5 rounded-lg bg-gray-800 border border-gray-700 
-                               text-white text-center text-sm focus:outline-none focus:border-amber-500/50"
+                                        className="w-16 px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                               text-gray-900 dark:text-white text-center text-sm focus:outline-none focus:border-amber-500/50"
                                     />
-                                    <span className="text-gray-400 text-xs">min</span>
+                                    <span className="text-gray-500 dark:text-gray-400 text-xs">min</span>
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-300">Critical threshold</span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Critical threshold</span>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="number"
@@ -194,13 +198,13 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
 
                         {/* Sound on timer end */}
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-sm text-gray-300 flex items-center gap-2">
+                            <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
                                 {settings.soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
                                 Sound on timer end
                             </span>
                             <button
                                 onClick={() => onUpdate({ soundEnabled: !settings.soundEnabled })}
-                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.soundEnabled ? 'bg-emerald-600' : 'bg-gray-700'
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.soundEnabled ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'
                                     }`}
                             >
                                 <div
@@ -212,7 +216,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
 
                         {/* Volume */}
                         <div className="mb-4">
-                            <label className="block text-sm text-gray-300 mb-2">
+                            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
                                 Volume — {Math.round(settings.alarmVolume * 100)}%
                             </label>
                             <input
@@ -230,14 +234,14 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                     <section>
                         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">End State</h3>
                         <div>
-                            <label className="block text-sm text-gray-300 mb-1.5">Message on screen</label>
+                            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1.5">Message on screen</label>
                             <input
                                 type="text"
                                 value={settings.endMessage}
                                 onChange={(e) => onUpdate({ endMessage: e.target.value.slice(0, 60) })}
                                 maxLength={60}
-                                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 
-                           text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                className="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                           text-gray-900 dark:text-white text-sm focus:outline-none focus:border-amber-500/50"
                             />
                             <p className="text-xs text-gray-500 mt-1">{settings.endMessage.length}/60 characters</p>
                         </div>

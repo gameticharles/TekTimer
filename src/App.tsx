@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import HomeScreen from './screens/HomeScreen';
 import QuizScreen from './screens/QuizScreen';
 import ExamScreen from './screens/ExamScreen';
@@ -13,10 +13,31 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { settings, updateSettings, resetSettings, loaded } = useSettings();
 
+  useEffect(() => {
+    if (!loaded) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const applyTheme = () => {
+      const isDark =
+        settings.theme === 'dark' ||
+        (settings.theme === 'system' && mediaQuery.matches);
+
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+    mediaQuery.addEventListener('change', applyTheme);
+    return () => mediaQuery.removeEventListener('change', applyTheme);
+  }, [settings?.theme, loaded]);
+
   if (!loaded) {
     return (
-      <div className="h-screen w-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
+      <div className="h-screen w-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 border-t-gray-900 dark:border-t-white rounded-full animate-spin" />
       </div>
     );
   }

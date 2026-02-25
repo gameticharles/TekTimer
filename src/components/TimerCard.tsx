@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Play, Pause, RotateCcw, X, Clock, Mic } from 'lucide-react';
-import { formatTime } from '../lib/formatTime';
 import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
 import { getBaseClampKey } from '../lib/gridLayout';
 import FontSizeControl from './FontSizeControl';
 import ProgressBar from './ProgressBar';
 import DismissOverlay from './DismissOverlay';
 import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
+import DynamicTimeDisplay from './DynamicTimeDisplay';
 import type { ExamTimer, AppSettings, AnnouncementEntry } from '../lib/types';
 
 interface TimerCardProps {
@@ -28,15 +28,15 @@ function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
     const { status, remainingSeconds, isDismissed } = timer;
     const { warningThresholdSeconds: warn, criticalThresholdSeconds: crit } = settings;
 
-    if (isDismissed) return { bg: 'bg-gray-900/60', textColor: 'text-gray-600', anim: '', border: 'border-gray-800' };
-    if (status === 'Ended') return { bg: 'bg-red-950/80', textColor: 'text-white animate-blink', anim: '', border: 'border-red-800' };
+    if (isDismissed) return { bg: 'bg-gray-200 dark:bg-gray-900/60', textColor: 'text-gray-500 dark:text-gray-600', anim: '', border: 'border-gray-300 dark:border-gray-800' };
+    if (status === 'Ended') return { bg: 'bg-red-100 dark:bg-red-950/80', textColor: 'text-red-700 dark:text-white animate-blink', anim: '', border: 'border-red-300 dark:border-red-800' };
     if (status === 'Running' && remainingSeconds <= 10)
-        return { bg: 'bg-gray-900/80', textColor: 'text-red-400', anim: 'animate-glow-critical', border: 'border-red-800/50' };
+        return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-red-600 dark:text-red-400', anim: 'animate-glow-critical', border: 'border-red-500/50 dark:border-red-800/50' };
     if (remainingSeconds <= crit && status === 'Running')
-        return { bg: 'bg-gray-900/80', textColor: 'text-red-400', anim: 'animate-glow-critical', border: 'border-red-800/50' };
+        return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-red-600 dark:text-red-400', anim: 'animate-glow-critical', border: 'border-red-500/50 dark:border-red-800/50' };
     if (remainingSeconds <= warn && status === 'Running')
-        return { bg: 'bg-gray-900/80', textColor: 'text-amber-400', anim: 'animate-glow-warning', border: 'border-amber-800/50' };
-    return { bg: 'bg-gray-900/80', textColor: 'text-white', anim: '', border: 'border-gray-700/50' };
+        return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-amber-600 dark:text-amber-400', anim: 'animate-glow-warning', border: 'border-amber-500/50 dark:border-amber-800/50' };
+    return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-gray-900 dark:text-white', anim: '', border: 'border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none' };
 }
 
 export default function TimerCard({
@@ -62,8 +62,6 @@ export default function TimerCard({
     const baseClamp = getBaseClamp(clampKey);
     const computedSize = scaleClamp(baseClamp, effectiveScale);
 
-    const timeDisplay = useMemo(() => formatTime(timer.remainingSeconds, true), [timer.remainingSeconds]);
-
     const beatKey = timer.status === 'Running' && timer.remainingSeconds <= 10
         ? timer.remainingSeconds
         : undefined;
@@ -88,9 +86,9 @@ export default function TimerCard({
             {/* Header */}
             <div className={`flex items-center justify-between ${timerCount === 1 ? 'mb-4' : 'mb-2'}`}>
                 <div className="flex-1 min-w-0">
-                    <h3 className={`font-bold text-white truncate leading-normal py-1 ${timerCount === 1 ? 'text-3xl md:text-5xl lg:text-6xl' : timerCount === 2 ? 'text-2xl' : 'text-xl'}`}>
-                        {timer.courseCode}
-                        <span className={`text-gray-400 font-normal ml-3 ${timerCount === 1 ? 'text-2xl md:text-4xl lg:text-5xl' : timerCount === 2 ? 'text-xl' : 'text-lg'}`}>· {timer.program}</span>
+                    <h3 className={`font-bold truncate leading-normal py-1 transition-colors ${textColor} ${timerCount === 1 ? 'text-3xl md:text-5xl lg:text-6xl' : timerCount === 2 ? 'text-2xl' : 'text-xl'}`}>
+                        {timer.courseCode || 'Timer'}
+                        {timer.program && <span className={`font-normal ml-3 ${timer.isDismissed ? 'text-gray-400 dark:text-gray-700' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-4xl lg:text-5xl' : timerCount === 2 ? 'text-xl' : 'text-lg'}`}>· {timer.program}</span>}
                     </h3>
                 </div>
                 <button
@@ -112,12 +110,12 @@ export default function TimerCard({
             )}
 
             {/* Clock */}
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center min-h-0 w-full">
                 <div
                     key={beatKey}
-                    className={`exam-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none`}
+                    className={`exam-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full`}
                 >
-                    {timeDisplay}
+                    <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>
             </div>
 

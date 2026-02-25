@@ -56,7 +56,7 @@ export interface AppSettings {
     customAlarmPath: string | null;
     endMessage: string;
     showProgressBar: boolean;
-    darkMode: boolean;
+    theme: 'system' | 'light' | 'dark';
     ignoreCompletedInCenterStage: boolean;
 
     // ─── Announcements ───────────────────────────────────────────────
@@ -89,7 +89,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     customAlarmPath: null,
     endMessage: "Time's Up — Pens Down",
     showProgressBar: true,
-    darkMode: true,
+    theme: 'system',
     ignoreCompletedInCenterStage: true,
 
     announcementsEnabled: true,

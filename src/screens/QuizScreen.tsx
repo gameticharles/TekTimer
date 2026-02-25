@@ -104,7 +104,7 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
     }
 
     return (
-        <div className="h-screen w-screen relative overflow-hidden bg-gray-950">
+        <div className="h-screen w-screen relative overflow-hidden bg-white dark:bg-gray-950 transition-colors">
             {/* Setup Modal */}
             {showSetup && (
                 <QuizSetupModal

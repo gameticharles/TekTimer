@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
-import { formatTime } from '../lib/formatTime';
 import type { QuizTimer as QuizTimerType, AppSettings } from '../lib/types';
+import DynamicTimeDisplay from './DynamicTimeDisplay';
 import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
 
 interface QuizTimerProps {
@@ -35,8 +34,6 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
         ? timer.remainingSeconds
         : undefined;
 
-    const timeDisplay = useMemo(() => formatTime(timer.remainingSeconds, true), [timer.remainingSeconds]);
-
     return (
         <div className={`${bg} h-full w-full flex flex-col items-center justify-center relative transition-colors duration-500`}
             style={{ '--quiz-clock-size': computedSize } as React.CSSProperties}>
@@ -48,11 +45,13 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
             )}
 
             {/* Clock */}
-            <div
-                key={beatKey}
-                className={`quiz-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none`}
-            >
-                {timeDisplay}
+            <div className="w-full flex items-center justify-center min-h-0">
+                <div
+                    key={beatKey}
+                    className={`quiz-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full`}
+                >
+                    <DynamicTimeDisplay seconds={timer.remainingSeconds} />
+                </div>
             </div>
 
             {/* Status indicator */}
