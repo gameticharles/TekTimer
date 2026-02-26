@@ -90,7 +90,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     customAlarmPath: null,
     endMessage: "Time's Up — Pens Down",
     showProgressBar: true,
-    progressBarHeight: 12, // Default 12px
+    progressBarHeight: 20, // Default 20px
     theme: 'system',
     ignoreCompletedInCenterStage: true,
 

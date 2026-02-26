@@ -174,7 +174,7 @@ export default function TimerCard({
                         remainingSeconds={timer.remainingSeconds}
                         durationSeconds={timer.durationSeconds}
                         status={timer.status}
-                        thickness={settings.progressBarHeight ?? 12}
+                        thickness={settings.progressBarHeight ?? 20}
                     />
                 </div>
             )}

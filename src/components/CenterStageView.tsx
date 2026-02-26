@@ -296,7 +296,7 @@ export default function CenterStageView({
                             remainingSeconds={activeTimer.remainingSeconds}
                             durationSeconds={activeTimer.durationSeconds}
                             status={activeTimer.status}
-                            thickness={settings.progressBarHeight ?? 12}
+                            thickness={settings.progressBarHeight ?? 20}
                         />
                     </div>
                 )}

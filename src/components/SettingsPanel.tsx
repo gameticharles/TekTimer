@@ -117,11 +117,11 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                                 min={4}
                                                 max={32}
                                                 step={2}
-                                                value={settings.progressBarHeight ?? 12}
+                                                value={settings.progressBarHeight ?? 20}
                                                 onChange={(e) => onUpdate({ progressBarHeight: Number(e.target.value) })}
                                                 className="w-24 accent-emerald-500"
                                             />
-                                            <span className="text-xs font-mono text-gray-500 dark:text-gray-400 w-8">{settings.progressBarHeight ?? 12}px</span>
+                                            <span className="text-xs font-mono text-gray-500 dark:text-gray-400 w-8">{settings.progressBarHeight ?? 20}px</span>
                                         </div>
                                     </div>
                                 </div>
