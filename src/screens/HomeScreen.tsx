@@ -1,5 +1,6 @@
 import { GraduationCap, ClipboardList, BookOpen, Settings } from 'lucide-react';
 import type { AppMode } from '../lib/types';
+import UpdateChecker from '../components/UpdateChecker';
 
 interface HomeScreenProps {
     onSelect: (mode: AppMode) => void;
@@ -8,11 +9,14 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onSelect, onSettings }: HomeScreenProps) {
     return (
-        <div className="h-screen w-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center relative transition-colors"
-            data-tauri-drag-region>
+        <div className="h-screen w-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center relative transition-colors">
+            
+            {/* Top Window Drag Region */}
+            <div data-tauri-drag-region className="absolute top-0 left-0 right-0 h-12 z-0" />
+
             {/* Title */}
-            <div className="mb-16 text-center" data-tauri-drag-region>
-                <div className="flex items-center justify-center gap-4 mb-3">
+            <div className="mb-16 text-center z-10">
+                <div className="flex items-center justify-center gap-4 mb-3" data-tauri-drag-region>
                     <GraduationCap size={48} className="text-amber-400" />
                     <h1 className="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
                         Exam & Quiz Timer
@@ -70,16 +74,19 @@ export default function HomeScreen({ onSelect, onSettings }: HomeScreenProps) {
                 </button>
             </div>
 
-            {/* Settings Button */}
-            <button
-                onClick={onSettings}
-                className="absolute bottom-8 right-8 flex items-center gap-2 px-4 py-2 rounded-lg
-                   text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800/60 
-                   transition-all duration-200"
-            >
-                <Settings size={18} />
-                <span className="text-sm font-medium">Settings</span>
-            </button>
+            {/* Settings & Version */}
+            <div className="absolute bottom-8 left-8 right-8 flex justify-between items-center">
+                <UpdateChecker />
+                <button
+                    onClick={onSettings}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg
+                       text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800/60 
+                       transition-all duration-200"
+                >
+                    <Settings size={18} />
+                    <span className="text-sm font-medium">Settings</span>
+                </button>
+            </div>
 
             {/* Close/minimize buttons for borderless window */}
             <div className="absolute top-4 right-4 flex gap-2">

@@ -122,7 +122,7 @@ export default function CenterStageView({
     let badgeText = activeTimer.status.toUpperCase();
 
     if (isEnded) {
-        timeColorClass = 'text-red-600 dark:text-red-400 animate-pulse';
+        timeColorClass = 'text-red-500 dark:text-red-400 blur-md opacity-60';
         badgeClass = 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
         badgeText = 'ENDED';
     } else if (isCritical) {
@@ -299,9 +299,18 @@ export default function CenterStageView({
 
                 {/* Massive Clock */}
                 <div className="flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10">
-                    <div className={`exam-clock massive-clock ${timeColorClass} transition-colors tracking-tighter`} style={{ fontSize: 'var(--exam-clock-size, min(28vw, 25vh))' }}>
+                    <div className={`exam-clock massive-clock ${timeColorClass} transition-colors tracking-tighter ${isEnded ? 'blur-md opacity-70' : ''}`} style={{ fontSize: 'var(--exam-clock-size, min(28vw, 25vh))' }}>
                         <DynamicTimeDisplay seconds={activeTimer.remainingSeconds} />
                     </div>
+                    
+                    {/* Time's Up Overlay Pill */}
+                    {isEnded && (
+                        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                            <div className="bg-red-500 text-white font-bold text-5xl md:text-7xl lg:text-8xl px-16 py-6 md:px-24 md:py-8 rounded-[3rem] shadow-[0_0_100px_rgba(239,68,68,0.6)] border-2 border-red-400/30 animate-in fade-in zoom-in duration-500">
+                                Time's Up!
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Progress Bar - Wide */}
