@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ExamTimer, AppSettings } from '../lib/types';
-import TimerCard from './TimerCard';
-import MiniTimerCard from './MiniTimerCard';
-import { Pause, Play } from 'lucide-react';
+import { Pause, Play, LayoutGrid, Mic, Settings, Maximize, Minimize, Power, Target, Clock, RotateCcw } from 'lucide-react';
+import ProgressBar from './ProgressBar';
+import DynamicTimeDisplay from './DynamicTimeDisplay';
+import { formatTime } from '../lib/formatTime';
 
 interface CenterStageViewProps {
     timers: ExamTimer[];
@@ -18,66 +19,72 @@ interface CenterStageViewProps {
     onFontSizeChange: (id: string, scale: number) => void;
     onFontSizeReset: (id: string) => void;
     onReorder: (sourceId: string, destId: string) => void;
+    onToggleView: () => void;
+    onExit: () => void;
+    onSettings: () => void;
+    onToggleFullscreen: () => void;
+    isFullscreen: boolean;
+    onAnnounce: () => void;
 }
 
 const CYCLE_INTERVAL_MS = 10000; // 10 seconds
+
+function formatEndTime(unixSeconds: number | null) {
+    if (!unixSeconds) return '';
+    const d = new Date(unixSeconds * 1000);
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 export default function CenterStageView({
     timers,
     settings,
     controlsVisible,
-    onReorder,
-    ...actions
+    onStart,
+    onPause,
+    onReset,
+    onAddExtraTime,
+    onToggleView,
+    onExit,
+    onSettings,
+    onToggleFullscreen,
+    isFullscreen,
+    onAnnounce
 }: CenterStageViewProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isAutoCycling, setIsAutoCycling] = useState(true);
-    const [draggedId, setDraggedId] = useState<string | null>(null);
     const cycleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Auto-cycle logic
     const jumpToNext = useCallback(() => {
         if (timers.length <= 1) return;
 
-        // Find the next active/running timer, or just cycle logically to the next index
         setActiveIndex((prev) => {
-            if (timers.length <= 1) return prev;
-
             let nextIdx = (prev + 1) % timers.length;
 
             if (settings.ignoreCompletedInCenterStage) {
-                // Find next that is not 'Ended'
                 let attempts = 0;
                 while (timers[nextIdx].status === 'Ended' && attempts < timers.length) {
                     nextIdx = (nextIdx + 1) % timers.length;
                     attempts++;
                 }
-
-                // If all are ended, just stay where we are or let it settle on 0
-                if (attempts >= timers.length) {
-                    return 0;
-                }
+                if (attempts >= timers.length) return 0;
             }
 
             return nextIdx;
         });
-    }, [timers.length]);
+    }, [timers.length, settings.ignoreCompletedInCenterStage]);
 
     useEffect(() => {
-        if (cycleTimeoutRef.current) {
-            clearTimeout(cycleTimeoutRef.current);
-        }
+        if (cycleTimeoutRef.current) clearTimeout(cycleTimeoutRef.current);
 
         if (isAutoCycling && timers.length > 1) {
-            // Create cycle
             cycleTimeoutRef.current = setTimeout(() => {
                 jumpToNext();
             }, CYCLE_INTERVAL_MS);
         }
 
         return () => {
-            if (cycleTimeoutRef.current) {
-                clearTimeout(cycleTimeoutRef.current);
-            }
+            if (cycleTimeoutRef.current) clearTimeout(cycleTimeoutRef.current);
         };
     }, [activeIndex, isAutoCycling, timers.length, jumpToNext]);
 
@@ -87,7 +94,6 @@ export default function CenterStageView({
 
         const safeActiveIndex = activeIndex >= timers.length ? 0 : activeIndex;
         if (timers[safeActiveIndex]?.status === 'Ended') {
-            // If there's at least one non-ended timer, jump to it
             const hasActive = timers.some(t => t.status !== 'Ended');
             if (hasActive) {
                 jumpToNext();
@@ -95,102 +101,265 @@ export default function CenterStageView({
         }
     }, [activeIndex, timers, settings.ignoreCompletedInCenterStage, jumpToNext]);
 
-    // Handle manual selection
     const handleSelect = (index: number) => {
         setActiveIndex(index);
-        // Pause auto-cycle briefly on manual interaction? Let's just keep it cycling, 
-        // but reset the 10s timer (handled implicitly by activeIndex dependency).
-    };
-
-    const toggleCycle = () => {
-        setIsAutoCycling((prev) => !prev);
-    };
-
-    // ── Drag & Drop ───────────────────────────────────────────────────
-    const handleDragStart = (e: React.DragEvent, id: string) => {
-        setDraggedId(id);
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    };
-
-    const handleDrop = (e: React.DragEvent, targetId: string) => {
-        e.preventDefault();
-        if (draggedId && draggedId !== targetId) {
-
-            // Adjust activeIndex if we are dragging the currently active timer
-            // or if we are dragging something before/after it to keep the same timer in focus
-            // (Handled implicitly by React re-renders for now)
-
-            onReorder(draggedId, targetId);
-
-            // If the user wants to stay on the same timer, they can manually select it.
-            // But we don't strictly need to do index math here because the reorder triggers a re-render
-            // with a new array.
-        }
-        setDraggedId(null);
+        setIsAutoCycling(false); // Disable auto cycle on manual selection
     };
 
     if (timers.length === 0) return null;
 
-    // Safe bounds check
     const safeActiveIndex = activeIndex >= timers.length ? 0 : activeIndex;
     const activeTimer = timers[safeActiveIndex];
 
+    const isEnded = activeTimer.status === 'Ended';
+    const isWarning = activeTimer.status === 'Running' && activeTimer.remainingSeconds <= settings.warningThresholdSeconds;
+    const isCritical = activeTimer.status === 'Running' && activeTimer.remainingSeconds <= settings.criticalThresholdSeconds;
+
+    let timeColorClass = 'text-gray-900 dark:text-white';
+    let badgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400';
+    let badgeText = activeTimer.status.toUpperCase();
+
+    if (isEnded) {
+        timeColorClass = 'text-red-600 dark:text-red-400 animate-pulse';
+        badgeClass = 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
+        badgeText = 'ENDED';
+    } else if (isCritical) {
+        timeColorClass = 'text-red-600 dark:text-red-400 animate-glow-critical';
+        badgeClass = 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
+        badgeText = 'CRITICAL';
+    } else if (isWarning) {
+        timeColorClass = 'text-amber-600 dark:text-amber-400 animate-glow-warning';
+        badgeClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400';
+        badgeText = 'WARNING';
+    } else if (activeTimer.status === 'Paused') {
+        timeColorClass = 'text-amber-600 dark:text-amber-500';
+        badgeClass = 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+    }
+
+    const formattedEndTime = formatEndTime(activeTimer.endTimeUnix);
+
     return (
-        <div className="flex h-full w-full relative">
-            {/* Sidebar List */}
-            <div className={`absolute left-0 top-0 bottom-0 w-64 bg-gray-950/90 backdrop-blur-md border-r border-gray-800 p-4 pt-16 flex flex-col gap-3 overflow-y-auto z-20 transition-transform duration-500 ${controlsVisible ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-gray-400 text-xs font-bold uppercase tracking-wider">All Sessions</h2>
+        <div className="flex flex-col h-full w-full bg-gray-50 dark:bg-black p-6 relative transition-colors">
+            {/* Top Toolbar */}
+            <div className={`flex items-center justify-between mb-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                {/* Header Title */}
+                <div className="flex items-center gap-4">
+                    <div className="bg-emerald-600 text-white p-2.5 rounded-xl shadow-sm shadow-emerald-500/20">
+                        <Target size={22} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Focus Mode</h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                            {timers.length} Active {timers.length === 1 ? 'Exam' : 'Exams'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Top Right Actions */}
+                <div className="flex items-center gap-2">
+                    {/* Auto-cycle toggle */}
+                    <button
+                        onClick={() => setIsAutoCycling(!isAutoCycling)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors ${isAutoCycling
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            }`}
+                        title={isAutoCycling ? 'Pause Auto-cycle' : 'Resume Auto-cycle'}
+                    >
+                        {isAutoCycling ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                        <span className="hidden xl:inline">{isAutoCycling ? 'Auto-cycling' : 'Auto-cycle Paused'}</span>
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-2 hidden md:block" />
+
+                    {/* Quick Tools */}
+                    {settings.announcementsEnabled && (
+                        <button
+                            onClick={onAnnounce}
+                            className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors hidden md:block"
+                            title="Manual Announcement"
+                        >
+                            <Mic size={18} />
+                        </button>
+                    )}
+                    <button
+                        onClick={onToggleFullscreen}
+                        className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors hidden sm:block"
+                        title="Toggle Fullscreen (F11)"
+                    >
+                        {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                    </button>
+                    <button
+                        onClick={onToggleView}
+                        className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        title="Toggle View (V)"
+                    >
+                        <LayoutGrid size={18} />
+                    </button>
+
+                    <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-1 hidden sm:block" />
 
                     <button
-                        onClick={toggleCycle}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold transition-colors
-                        ${isAutoCycling ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                        title={isAutoCycling ? 'Auto-cycle ON (10s)' : 'Auto-cycle OFF'}
+                        onClick={onSettings}
+                        className="p-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-800 transition-all hidden sm:block"
+                        title="Settings"
                     >
-                        {isAutoCycling ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-                        {isAutoCycling ? 'Auto' : 'Manual'}
+                        <Settings size={18} />
+                    </button>
+                    <button
+                        onClick={onExit}
+                        className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors ml-1"
+                        title="Exit UI"
+                    >
+                        <Power size={18} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Horizontal Tabs */}
+            <div className={`flex items-center gap-3 overflow-x-auto pb-4 mb-4 hide-scrollbar transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                {timers.map((t, idx) => {
+                    const isSelected = idx === safeActiveIndex;
+                    const isTabEnded = t.status === 'Ended';
+                    const isTabWarning = t.status === 'Running' && t.remainingSeconds <= settings.warningThresholdSeconds;
+                    const isTabCritical = t.status === 'Running' && t.remainingSeconds <= settings.criticalThresholdSeconds;
+
+                    let dotColor = 'bg-blue-500';
+                    if (isTabEnded || isTabCritical) dotColor = 'bg-red-500';
+                    else if (isTabWarning) dotColor = 'bg-amber-500';
+                    else if (t.status === 'Paused') dotColor = 'bg-gray-400';
+
+                    return (
+                        <button
+                            key={t.id}
+                            onClick={() => handleSelect(idx)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all shrink-0 ${isSelected
+                                    ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-md'
+                                    : 'bg-transparent border-transparent hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+                                }`}
+                        >
+                            <div className={`w-2 h-2 rounded-full ${dotColor} ${isTabCritical && t.status === 'Running' ? 'animate-pulse' : ''}`} />
+                            <div className="flex flex-col items-start font-medium text-left">
+                                <span className={`text-sm truncate max-w-[140px] ${isSelected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    {t.courseCode || 'Untitled'}
+                                </span>
+                                <span className={`text-xs font-mono tracking-tight ${isSelected ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
+                                    {formatTime(t.remainingSeconds, true)}
+                                </span>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Central Bespoke Display */}
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800/60 rounded-3xl p-8 relative overflow-hidden shadow-2xl dark:shadow-none transition-colors">
+
+                {/* Active Timer Info */}
+                <div className="flex flex-col items-center mb-10 text-center relative z-10 w-full">
+                    <div className="flex items-center justify-center gap-3 mb-6">
+                        <span className={`px-4 py-1.5 text-xs font-bold tracking-widest rounded-full transition-colors ${badgeClass}`}>
+                            {badgeText}
+                        </span>
+                        {formattedEndTime && (
+                            <span className="px-4 py-1.5 bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300 text-xs font-bold tracking-widest rounded-full border border-gray-200 dark:border-gray-800/50">
+                                ENDS {formattedEndTime}
+                            </span>
+                        )}
+                    </div>
+
+                    <h2 className="text-4xl md:text-5xl lg:text-7xl font-bold text-gray-900 dark:text-white tracking-tight mb-4 transition-colors">
+                        {activeTimer.courseCode || 'Untitled Timer'}
+                    </h2>
+
+                    {(activeTimer.program || activeTimer.studentCount > 0) && (
+                        <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 font-medium">
+                            {[activeTimer.program, activeTimer.studentCount > 0 ? `${activeTimer.studentCount} Students` : null].filter(Boolean).join(' • ')}
+                        </p>
+                    )}
+                </div>
+
+                {/* Massive Clock */}
+                <div className="flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10">
+                    <div className={`exam-clock massive-clock ${timeColorClass} transition-colors tracking-tighter`} style={{ fontSize: 'min(28vw, 25vh)' }}>
+                        <DynamicTimeDisplay seconds={activeTimer.remainingSeconds} />
+                    </div>
+                    <p className={`uppercase tracking-widest text-sm font-bold mt-4 ${activeTimer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColorClass}`}>
+                        Time Remaining
+                    </p>
+                </div>
+
+                {/* Progress Bar - Wide */}
+                {settings.showProgressBar && (
+                    <div className="w-full max-w-5xl mt-8 relative z-10">
+                        <ProgressBar
+                            remainingSeconds={activeTimer.remainingSeconds}
+                            durationSeconds={activeTimer.durationSeconds}
+                            status={activeTimer.status}
+                            variant="fullwidth"
+                        />
+                    </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className={`absolute bottom-8 right-8 flex items-center gap-3 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <button
+                        onClick={() => onAddExtraTime(activeTimer.id)}
+                        disabled={activeTimer.status === 'Ended' && activeTimer.isDismissed}
+                        className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors disabled:opacity-40"
+                    >
+                        <Clock size={18} />
+                        + Time
+                    </button>
+
+                    {(activeTimer.status === 'Idle' || activeTimer.status === 'Paused') && (
+                        <button
+                            onClick={() => onStart(activeTimer.id)}
+                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 transition-colors"
+                        >
+                            <Play size={18} fill="currentColor" />
+                            {activeTimer.status === 'Idle' ? 'Start' : 'Resume'}
+                        </button>
+                    )}
+
+                    {activeTimer.status === 'Running' && (
+                        <button
+                            onClick={() => onPause(activeTimer.id)}
+                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-bold shadow-lg shadow-amber-500/20 transition-colors"
+                        >
+                            <Pause size={18} fill="currentColor" />
+                            Pause
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => onReset(activeTimer.id)}
+                        disabled={activeTimer.status === 'Idle'}
+                        className="p-3 rounded-2xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                        title="Reset"
+                    >
+                        <RotateCcw size={18} />
                     </button>
                 </div>
 
-                {timers.map((timer, idx) => (
-                    <div
-                        key={timer.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, timer.id)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, timer.id)}
-                        onDragEnd={() => setDraggedId(null)}
-                        style={{ opacity: draggedId === timer.id ? 0.4 : 1 }}
-                        className="transition-opacity"
-                    >
-                        <MiniTimerCard
-                            timer={timer}
-                            settings={settings}
-                            isActive={idx === safeActiveIndex}
-                            onClick={() => handleSelect(idx)}
-                        />
-                    </div>
-                ))}
+                {/* Ambient glow effect behind timer (Optional, for aesthetics) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 dark:bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
             </div>
 
-            {/* Main Content (Center Staged) */}
-            <div className="flex-1 p-6 flex flex-col relative overflow-hidden mt-10">
-                <div className="w-full h-full transition-all duration-500 pb-10 [&>div]:h-full">
-                    <TimerCard
-                        timer={activeTimer}
-                        settings={settings}
-                        timerCount={1} // Force maximum scaling size clamp
-                        {...actions}
-                    />
-                </div>
-            </div>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .hide-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .hide-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+                .massive-clock {
+                    line-height: 0.85;
+                    font-variant-numeric: tabular-nums;
+                }
+            `}} />
         </div>
     );
 }

@@ -29,15 +29,57 @@ function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
     const { status, remainingSeconds, isDismissed } = timer;
     const { warningThresholdSeconds: warn, criticalThresholdSeconds: crit } = settings;
 
-    if (isDismissed) return { bg: 'bg-gray-200 dark:bg-gray-900/60', textColor: 'text-gray-500 dark:text-gray-600', anim: '', border: 'border-gray-300 dark:border-gray-800' };
-    if (status === 'Ended') return { bg: 'bg-red-100 dark:bg-red-950/80', textColor: 'text-red-700 dark:text-white animate-blink', anim: '', border: 'border-red-300 dark:border-red-800' };
-    if (status === 'Running' && remainingSeconds <= 10)
-        return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-red-600 dark:text-red-400', anim: 'animate-glow-critical', border: 'border-red-500/50 dark:border-red-800/50' };
-    if (remainingSeconds <= crit && status === 'Running')
-        return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-red-600 dark:text-red-400', anim: 'animate-glow-critical', border: 'border-red-500/50 dark:border-red-800/50' };
-    if (remainingSeconds <= warn && status === 'Running')
-        return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-amber-600 dark:text-amber-400', anim: 'animate-glow-warning', border: 'border-amber-500/50 dark:border-amber-800/50' };
-    return { bg: 'bg-white dark:bg-gray-900/80', textColor: 'text-gray-900 dark:text-white', anim: '', border: 'border-gray-200 dark:border-gray-700/50 shadow-sm dark:shadow-none' };
+    let state = {
+        bg: 'bg-white dark:bg-gray-900',
+        textColor: 'text-gray-900 dark:text-white',
+        border: 'border-gray-200 dark:border-gray-800',
+        timeColor: 'text-gray-900 dark:text-white',
+        badge: 'IDLE',
+        badgeColor: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+        anim: ''
+    };
+
+    if (isDismissed) {
+        state.bg = 'bg-gray-50 dark:bg-gray-900/50';
+        state.textColor = 'text-gray-400 dark:text-gray-600';
+        state.timeColor = 'text-gray-400 dark:text-gray-600';
+    } else if (status === 'Ended') {
+        state.bg = 'bg-red-50/50 dark:bg-red-950/20';
+        state.border = 'border-red-200 dark:border-red-900/50';
+        state.timeColor = 'text-red-600 dark:text-red-400';
+        state.badge = 'ENDED';
+        state.badgeColor = 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
+        state.anim = 'animate-pulse';
+    } else if (status === 'Paused') {
+        state.badge = 'PAUSED';
+        state.timeColor = 'text-amber-600 dark:text-amber-500';
+        state.badgeColor = 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400';
+    } else if (status === 'Running') {
+        state.badge = 'RUNNING';
+        state.badgeColor = 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400';
+
+        if (remainingSeconds <= crit) {
+            state.timeColor = 'text-red-600 dark:text-red-400';
+            state.border = 'border-red-300 dark:border-red-800/50';
+            state.badge = 'CRITICAL';
+            state.badgeColor = 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
+            state.anim = 'animate-glow-critical';
+        } else if (remainingSeconds <= warn) {
+            state.timeColor = 'text-amber-600 dark:text-amber-400';
+            state.border = 'border-amber-300 dark:border-amber-800/50';
+            state.badge = 'WARNING';
+            state.badgeColor = 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400';
+            state.anim = 'animate-glow-warning';
+        }
+    }
+
+    return state;
+}
+
+function formatEndTime(unixSeconds: number | null) {
+    if (!unixSeconds) return '';
+    const d = new Date(unixSeconds * 1000);
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 export default function TimerCard({
@@ -55,9 +97,13 @@ export default function TimerCard({
     onFontSizeReset,
     onUpdateSchedule,
 }: TimerCardProps) {
-    const [recentExtraTime, setRecentExtraTime] = useState<number | null>(null);
     const [showScheduleEditor, setShowScheduleEditor] = useState(false);
-    const { bg, textColor, anim, border } = getCardVisualState(timer, settings);
+
+    const handleAddExtraTime = () => {
+        onAddExtraTime(timer.id);
+    };
+
+    const { bg, textColor, border, timeColor, badge, badgeColor, anim } = getCardVisualState(timer, settings);
 
     const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
     const clampKey = getBaseClampKey(timerCount);
@@ -68,79 +114,71 @@ export default function TimerCard({
         ? timer.remainingSeconds
         : undefined;
 
+    const formattedEndTime = formatEndTime(timer.endTimeUnix);
+
     return (
         <div
-            className={`${bg} border ${border} rounded-xl p-4 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full`}
+            className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none`}
             style={{ '--exam-clock-size': computedSize } as React.CSSProperties}
         >
             {/* Dismiss Overlay */}
             <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} />
 
-            {/* Extra time badge */}
-            {recentExtraTime && (
-                <div className="absolute top-4 right-12 bg-emerald-600 text-white font-bold px-3 py-1 
-                        rounded-lg text-sm animate-fade-out z-20"
-                    onAnimationEnd={() => setRecentExtraTime(null)}>
-                    +{recentExtraTime / 60} min
-                </div>
-            )}
-
-            {/* Header */}
-            <div className={`flex items-center justify-between ${timerCount === 1 ? 'mb-4' : 'mb-2'}`}>
-                <div className="flex-1 min-w-0">
-                    <h3 className={`font-bold truncate leading-normal py-1 transition-colors ${textColor} ${timerCount === 1 ? 'text-3xl md:text-5xl lg:text-6xl' : timerCount === 2 ? 'text-2xl' : 'text-xl'}`}>
-                        {timer.courseCode || 'Timer'}
-                        {timer.program && <span className={`font-normal ml-3 ${timer.isDismissed ? 'text-gray-400 dark:text-gray-700' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-4xl lg:text-5xl' : timerCount === 2 ? 'text-xl' : 'text-lg'}`}>· {timer.program}</span>}
+            {/* Header Area */}
+            <div className={`flex justify-between items-start ${timerCount === 1 ? 'mb-8' : 'mb-6'}`}>
+                {/* Title & Info */}
+                <div className="flex-1 min-w-0 pr-4">
+                    <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
+                        {timer.courseCode || 'Untitled'}
                     </h3>
-                </div>
-                <div className="flex items-center">
-                    {onEdit && (
-                        <button
-                            onClick={() => onEdit(timer.id)}
-                            className={`p-1 rounded text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors ${timerCount === 1 ? 'transform scale-150 mr-3' : 'mr-1'}`}
-                            aria-label="Edit timer"
-                        >
-                            <Pencil size={14} />
-                        </button>
+                    {(timer.program || timer.studentCount > 0) && (
+                        <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-xl md:text-2xl' : 'text-sm md:text-base'}`}>
+                            {[timer.program, timer.studentCount > 0 ? `${timer.studentCount} Students` : null].filter(Boolean).join(' • ')}
+                        </p>
                     )}
-                    <button
-                        onClick={() => onDelete(timer.id)}
-                        className={`p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-2 ${!onUpdateSchedule ? 'opacity-0 pointer-events-none' : ''} ${timerCount === 1 ? 'transform scale-150 mr-2' : ''}`}
-                        aria-label="Delete timer"
-                    >
-                        <X size={14} />
-                    </button>
                 </div>
+
+                {/* Badge & End Time */}
+                <div className="flex flex-col items-end shrink-0">
+                    <span className={`px-3 py-1 text-xs md:text-sm font-bold rounded-full mb-1.5 transition-colors ${badgeColor}`}>
+                        {badge}
+                    </span>
+                    {formattedEndTime && (
+                        <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">
+                            Ends {formattedEndTime}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Time Display */}
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full mb-6 relative">
+                <div
+                    key={beatKey}
+                    className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full transition-colors`}
+                >
+                    <DynamicTimeDisplay seconds={timer.remainingSeconds} />
+                </div>
+                {/* Time Remaining Label */}
+                <p className={`uppercase tracking-widest text-xs font-bold mt-2 ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                    Time Remaining
+                </p>
             </div>
 
             {/* Progress Bar */}
             {settings.showProgressBar && (
-                <ProgressBar
-                    remainingSeconds={timer.remainingSeconds}
-                    durationSeconds={timer.durationSeconds}
-                    status={timer.status}
-                />
-            )}
-
-            {/* Clock */}
-            <div className="flex-1 flex items-center justify-center min-h-0 w-full">
-                <div
-                    key={beatKey}
-                    className={`exam-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full`}
-                >
-                    <DynamicTimeDisplay seconds={timer.remainingSeconds} />
+                <div className="mb-6 w-full">
+                    <ProgressBar
+                        remainingSeconds={timer.remainingSeconds}
+                        durationSeconds={timer.durationSeconds}
+                        status={timer.status}
+                    />
                 </div>
-            </div>
-
-            {/* Paused indicator */}
-            {timer.status === 'Paused' && (
-                <p className="text-center text-amber-400/60 text-xs font-medium animate-pulse mb-1">
-                    ⏸ PAUSED
-                </p>
             )}
 
             {/* Controls */}
-            <div className="flex items-center justify-between mt-auto pt-2">
+            <div className="flex items-center justify-between mt-auto">
+                {/* Left Side: Font Size */}
                 <FontSizeControl
                     scale={effectiveScale}
                     isOverride={timer.fontSizeOverride !== null}
@@ -149,48 +187,35 @@ export default function TimerCard({
                     compact
                 />
 
-                <div className="flex items-center gap-1.5">
-                    {/* Edit Announcements */}
-                    {onUpdateSchedule && settings.announcementsEnabled && (
-                        <button
-                            onClick={() => setShowScheduleEditor(true)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-400 hover:bg-gray-700 transition-colors"
-                            title="Edit Announcement Schedule"
-                        >
-                            <Mic size={14} />
-                        </button>
-                    )}
-
-                    {/* Extra Time */}
+                {/* Right Side: Actions */}
+                <div className="flex items-center gap-2">
+                    {/* Add Time */}
                     <button
-                        onClick={() => onAddExtraTime(timer.id)}
+                        onClick={handleAddExtraTime}
                         disabled={timer.status === 'Ended' && timer.isDismissed}
-                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-gray-300 
-                       hover:bg-gray-700 transition-colors disabled:opacity-40"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
                         title="Add extra time"
                     >
-                        <Clock size={12} />
-                        +Time
+                        <Clock size={14} />
+                        <span className="hidden sm:inline">+Time</span>
                     </button>
 
                     {/* Start / Pause */}
                     {(timer.status === 'Idle' || timer.status === 'Paused') && (
                         <button
                             onClick={() => onStart(timer.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white 
-                         text-xs font-semibold hover:bg-emerald-500 transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm shadow-emerald-600/20 transition-colors"
                         >
-                            <Play size={12} fill="currentColor" />
+                            <Play size={14} fill="currentColor" />
                             {timer.status === 'Idle' ? 'Start' : 'Resume'}
                         </button>
                     )}
                     {timer.status === 'Running' && (
                         <button
                             onClick={() => onPause(timer.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-600 text-white 
-                         text-xs font-semibold hover:bg-amber-500 transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold shadow-sm shadow-amber-500/20 transition-colors"
                         >
-                            <Pause size={12} />
+                            <Pause size={14} fill="currentColor" />
                             Pause
                         </button>
                     )}
@@ -199,14 +224,46 @@ export default function TimerCard({
                     <button
                         onClick={() => onReset(timer.id)}
                         disabled={timer.status === 'Idle'}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 
-                       disabled:opacity-30 transition-colors"
+                        className="p-2 rounded-xl text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:text-gray-400 dark:bg-gray-800 dark:hover:text-white dark:hover:bg-gray-700 disabled:opacity-40 transition-colors"
                         aria-label="Reset"
+                        title="Reset"
                     >
-                        <RotateCcw size={14} />
+                        <RotateCcw size={16} />
+                    </button>
+
+                    {/* Menu / Edit / Delete */}
+                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+
+                    {onUpdateSchedule && settings.announcementsEnabled && (
+                        <button
+                            onClick={() => setShowScheduleEditor(true)}
+                            className="p-2 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
+                            title="Announcements"
+                        >
+                            <Mic size={16} />
+                        </button>
+                    )}
+
+                    {onEdit && (
+                        <button
+                            onClick={() => onEdit(timer.id)}
+                            className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+                            title="Edit"
+                        >
+                            <Pencil size={16} />
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => onDelete(timer.id)}
+                        className="p-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                        title="Delete"
+                    >
+                        <X size={16} />
                     </button>
                 </div>
             </div>
+
             {showScheduleEditor && onUpdateSchedule && (
                 <AnnouncementScheduleEditor
                     timer={timer}

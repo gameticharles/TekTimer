@@ -45,14 +45,14 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl w-[460px] shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 transition-colors">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-[460px] shadow-2xl transition-colors">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-                    <h2 className="text-xl font-bold text-white">Edit Timer</h2>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 transition-colors">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Timer</h2>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
                         <X size={18} />
                     </button>
@@ -61,7 +61,7 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {/* Course Code */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Course Code</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 transition-colors">Course Code</label>
                         <input
                             type="text"
                             value={courseCode}
@@ -69,30 +69,30 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
                             placeholder="e.g. GEOM 261 (Optional)"
                             maxLength={20}
                             autoFocus
-                            className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
-                         text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50
+                            className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                         text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500/50
                          focus:ring-1 focus:ring-blue-500/20 transition-colors"
                         />
                     </div>
 
                     {/* Program / Cohort */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Program / Cohort</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 transition-colors">Program / Cohort</label>
                         <input
                             type="text"
                             value={program}
                             onChange={(e) => setProgram(e.target.value)}
                             placeholder="e.g. BSc Geomatic Engineering (Optional)"
                             maxLength={80}
-                            className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
-                         text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50
+                            className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                         text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500/50
                          focus:ring-1 focus:ring-blue-500/20 transition-colors"
                         />
                     </div>
 
                     {/* Student Count */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Number of Students</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 transition-colors">Number of Students</label>
                         <input
                             type="number"
                             min={0}
@@ -100,15 +100,15 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
                             value={studentCount}
                             onChange={(e) => setStudentCount(e.target.value)}
                             placeholder="e.g. 45 (Optional)"
-                            className="w-32 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
-                         text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50
+                            className="w-32 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                         text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500/50
                          focus:ring-1 focus:ring-blue-500/20 transition-colors"
                         />
                     </div>
 
                     {/* Duration */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Total Duration</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 transition-colors">Total Duration</label>
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2">
                                 <input
@@ -117,13 +117,13 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
                                     max={9}
                                     value={hours}
                                     onChange={(e) => setHours(Math.min(9, Math.max(0, Number(e.target.value))))}
-                                    className="w-20 px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
-                             text-white text-center text-lg font-mono focus:outline-none 
+                                    className="w-20 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                             text-gray-900 dark:text-white text-center text-lg font-mono focus:outline-none 
                              focus:border-blue-500/50 transition-colors"
                                 />
-                                <span className="text-gray-400 text-sm">hours</span>
+                                <span className="text-gray-500 dark:text-gray-400 text-sm transition-colors">hours</span>
                             </div>
-                            <span className="text-gray-600 text-2xl font-light">:</span>
+                            <span className="text-gray-400 dark:text-gray-600 text-2xl font-light transition-colors">:</span>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
@@ -131,14 +131,14 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
                                     max={59}
                                     value={minutes}
                                     onChange={(e) => setMinutes(Math.min(59, Math.max(0, Number(e.target.value))))}
-                                    className="w-20 px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 
-                             text-white text-center text-lg font-mono focus:outline-none 
+                                    className="w-20 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                             text-gray-900 dark:text-white text-center text-lg font-mono focus:outline-none 
                              focus:border-blue-500/50 transition-colors"
                                 />
-                                <span className="text-gray-400 text-sm">minutes</span>
+                                <span className="text-gray-500 dark:text-gray-400 text-sm transition-colors">minutes</span>
                             </div>
                         </div>
-                        <p className="text-xs text-amber-500/80 mt-2">
+                        <p className="text-xs text-amber-600 dark:text-amber-500/80 mt-2 transition-colors">
                             Warning: Trimming the duration will immediately reduce the remaining time proportionately.
                         </p>
                     </div>
@@ -147,8 +147,8 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
                     <button
                         type="submit"
                         disabled={!isValid}
-                        className="w-full py-3 mt-4 rounded-xl bg-blue-600 text-white font-bold text-lg
-                       hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed
+                        className="w-full py-3 mt-4 rounded-xl bg-blue-600 dark:bg-blue-600 text-white font-bold text-lg
+                       hover:bg-blue-500 dark:hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed
                        transition-colors shadow-lg shadow-blue-600/20"
                     >
                         Save Changes

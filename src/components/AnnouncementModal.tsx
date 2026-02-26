@@ -66,15 +66,15 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4 transition-colors">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in-up transition-colors">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-800/50">
-                    <div className="flex items-center gap-3 text-emerald-400">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 transition-colors">
+                    <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
                         <Mic size={20} />
-                        <h2 className="text-lg font-bold text-white">Manual Announcement</h2>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white transition-colors">Manual Announcement</h2>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                         <X size={18} />
                     </button>
                 </div>
@@ -82,11 +82,11 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
                 <div className="p-6 space-y-6">
                     {/* Target Selection */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Target Audience</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2 transition-colors">Target Audience</label>
                         <select
                             value={targetTimerId}
                             onChange={(e) => setTargetTimerId(e.target.value)}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500/50"
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
                         >
                             <option value="all">🌐 All Timers (No Prefix)</option>
                             {timers.map(t => (
@@ -99,13 +99,13 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
 
                     {/* Quick Buttons */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Quick Messages (Interrupts immediately)</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2 transition-colors">Quick Messages (Interrupts immediately)</label>
                         <div className="grid grid-cols-2 gap-2">
                             {settings.quickPickMessages.map((msg, i) => (
                                 <button
                                     key={i}
                                     onClick={() => handleQuickAdd(msg)}
-                                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm text-left truncate transition-colors border border-transparent hover:border-gray-600"
+                                    className="bg-gray-100 dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white px-3 py-2 rounded-lg text-sm text-left truncate transition-colors border border-transparent hover:border-emerald-200 dark:hover:border-gray-600"
                                     title={msg}
                                 >
                                     {msg}
@@ -116,8 +116,8 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
 
                     {/* AI Generation */}
                     {settings.llmEnabled && (
-                        <div className="p-4 bg-emerald-900/20 border border-emerald-900/50 rounded-xl space-y-3">
-                            <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl space-y-3 transition-colors">
+                            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-medium transition-colors">
                                 <Sparkles size={16} />
                                 Generate with AI
                             </div>
@@ -128,12 +128,12 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
                                     value={llmIntent}
                                     onChange={e => setLlmIntent(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleGenerate()}
-                                    className="flex-1 bg-gray-800/50 border border-emerald-900/30 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+                                    className="flex-1 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-emerald-900/30 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
                                 />
                                 <button
                                     onClick={handleGenerate}
                                     disabled={isGenerating || !llmIntent.trim()}
-                                    className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900 disabled:text-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                    className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-200 dark:disabled:bg-emerald-900 disabled:text-emerald-50 dark:disabled:text-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                                 >
                                     {isGenerating ? <RefreshCw size={14} className="animate-spin" /> : 'Generate'}
                                 </button>
@@ -143,29 +143,29 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
 
                     {/* Custom Text Area */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Custom Message</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2 transition-colors">Custom Message</label>
                         <textarea
                             value={customText}
                             onChange={(e) => setCustomText(e.target.value)}
                             placeholder="Type your announcement here... Use {program}, {courseCode} for substitutions."
                             rows={3}
-                            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 resize-none font-medium"
+                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500/50 resize-none font-medium transition-colors"
                         />
                         {customText.trim() && (
-                            <div className="mt-2 text-sm text-gray-500 bg-gray-800/50 p-3 rounded-lg border border-gray-800">
-                                <span className="font-semibold text-gray-400">Preview: </span>
-                                <span className="italic text-gray-300">"{getPreviewText(customText)}"</span>
+                            <div className="mt-2 text-sm text-gray-600 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-800 transition-colors">
+                                <span className="font-semibold text-gray-700 dark:text-gray-400">Preview: </span>
+                                <span className="italic text-gray-600 dark:text-gray-300">"{getPreviewText(customText)}"</span>
                             </div>
                         )}
                     </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="px-6 py-4 bg-gray-800/50 border-t border-gray-800 flex justify-end gap-3">
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-3 transition-colors">
                     <button
                         onClick={() => handleQueue(customText)}
                         disabled={!customText.trim()}
-                        className="px-5 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 font-medium transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                        className="px-5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 font-medium transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
                     >
                         Add to Queue
                     </button>

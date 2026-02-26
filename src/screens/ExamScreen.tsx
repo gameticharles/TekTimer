@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid, Presentation, Mic
+    Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid, Presentation, Mic, Power
 } from 'lucide-react';
 import TimerCard from '../components/TimerCard';
 import AddExamTimerModal from '../components/AddExamTimerModal';
@@ -146,118 +146,127 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
 
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-gray-50 dark:bg-gray-950 transition-colors">
-            {/* Toolbar */}
-            <div
-                className={`absolute top-0 left-0 right-0 z-30 px-4 py-2 flex items-center justify-between
-                    bg-gradient-to-b from-white/90 dark:from-black/80 to-transparent transition-all duration-300
-                    ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
-            >
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleExit}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white 
-                       hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all text-sm"
-                    >
-                        <ArrowLeft size={16} />
-                        Exit
-                    </button>
+            {/* Toolbar (Only for Grid View) */}
+            {viewMode === 'grid' && (
+                <div
+                    className={`absolute top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between
+                        bg-white/90 dark:bg-black/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 transition-all duration-300
+                        ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
+                >
+                    {/* Left Side: Title & Subtitle */}
+                    <div className="flex items-center gap-4">
+                        <div className="bg-blue-600 text-white p-2.5 rounded-xl shadow-sm shadow-blue-500/20">
+                            <LayoutGrid size={22} />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Exam Mode</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                {examTimers.length} Active {examTimers.length === 1 ? 'Exam' : 'Exams'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Right Side: Actions */}
+                    <div className="flex items-center gap-2">
+                        {/* Pause All */}
+                        <button
+                            onClick={() => store.pauseAll()}
+                            disabled={!hasRunning}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-xl font-bold text-sm hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-40"
+                            title="Pause All (P)"
+                        >
+                            <Pause size={16} fill="currentColor" />
+                            <span className="hidden xl:inline">Pause All</span>
+                        </button>
+
+                        {/* Resume All */}
+                        <button
+                            onClick={() => store.resumeAll()}
+                            disabled={!hasPaused}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-xl font-bold text-sm hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-40"
+                            title="Resume All (Shift+P)"
+                        >
+                            <Play size={16} fill="currentColor" />
+                            <span className="hidden xl:inline">Resume All</span>
+                        </button>
+
+                        <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-2 hidden md:block" />
+
+                        {/* Add Timer */}
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            disabled={examTimers.length >= 5}
+                            className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 hidden md:block"
+                            title={examTimers.length >= 5 ? 'Maximum 5 sessions reached' : 'Add Timer (N)'}
+                        >
+                            <Plus size={18} />
+                        </button>
+
+                        {/* Announce */}
+                        {settings.announcementsEnabled && (
+                            <button
+                                onClick={() => setShowAnnounceModal(true)}
+                                disabled={examTimers.length === 0}
+                                className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40 hidden md:block"
+                                title="Manual Announcement"
+                            >
+                                <Mic size={18} />
+                            </button>
+                        )}
+
+                        {/* Fullscreen */}
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors hidden sm:block"
+                            title="Toggle Fullscreen (F11)"
+                        >
+                            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                        </button>
+
+                        {/* View Toggle */}
+                        <button
+                            onClick={() => setViewMode((prev) => (prev === 'grid' ? 'center' : 'grid'))}
+                            className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            title="Toggle View (V)"
+                        >
+                            {viewMode === 'grid' ? <Presentation size={18} /> : <LayoutGrid size={18} />}
+                        </button>
+
+                        <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-1 hidden sm:block" />
+
+                        {/* Settings */}
+                        <button
+                            onClick={onSettings}
+                            className="p-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-800 transition-all hidden sm:block"
+                            title="Settings"
+                        >
+                            <Settings size={18} />
+                        </button>
+
+                        {/* Blackout */}
+                        <button
+                            onClick={enableBlackout}
+                            className="p-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-800 transition-all hidden lg:block"
+                            title="Blackout (B)"
+                        >
+                            <Moon size={18} />
+                        </button>
+
+                        {/* Exit */}
+                        <button
+                            onClick={handleExit}
+                            className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors ml-1"
+                            title="Exit UI"
+                        >
+                            <Power size={18} />
+                        </button>
+                    </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                    {/* Pause All / Resume All */}
-                    <button
-                        onClick={() => store.pauseAll()}
-                        disabled={!hasRunning}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-                       text-gray-300 hover:text-white hover:bg-white/10 transition-all
-                       disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Pause All (P)"
-                    >
-                        <Pause size={14} />
-                        Pause All
-                    </button>
-                    <button
-                        onClick={() => store.resumeAll()}
-                        disabled={!hasPaused}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-                       text-gray-300 hover:text-white hover:bg-white/10 transition-all
-                       disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Resume All (Shift+P)"
-                    >
-                        <Play size={14} fill="currentColor" />
-                        Resume All
-                    </button>
-
-                    <div className="w-px h-5 bg-gray-700" />
-
-                    {/* View Toggle */}
-                    <button
-                        onClick={() => setViewMode((prev) => (prev === 'grid' ? 'center' : 'grid'))}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-                       text-gray-300 hover:text-white hover:bg-white/10 transition-all"
-                        title="Toggle View (V)"
-                    >
-                        {viewMode === 'grid' ? <Presentation size={14} /> : <LayoutGrid size={14} />}
-                        {viewMode === 'grid' ? 'Center Stage' : 'Grid Layout'}
-                    </button>
-
-                    <div className="w-px h-5 bg-gray-700 mx-1" />
-
-                    {/* Add Timer */}
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        disabled={examTimers.length >= 5}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-                       text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all
-                       disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={examTimers.length >= 5 ? 'Maximum 5 sessions reached' : 'Add Timer (N)'}
-                    >
-                        <Plus size={14} />
-                        Add
-                    </button>
-
-                    <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1" />
-
-                    {/* Announce */}
-                    <button
-                        onClick={() => setShowAnnounceModal(true)}
-                        disabled={examTimers.length === 0}
-                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Manual Announcement"
-                    >
-                        <Mic size={16} />
-                    </button>
-
-                    {/* Blackout */}
-                    <button
-                        onClick={enableBlackout}
-                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all"
-                        title="Blackout (B)"
-                    >
-                        <Moon size={16} />
-                    </button>
-
-                    {/* Settings */}
-                    <button
-                        onClick={onSettings}
-                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all"
-                    >
-                        <Settings size={16} />
-                    </button>
-
-                    {/* Fullscreen */}
-                    <button
-                        onClick={toggleFullscreen}
-                        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-900/10 dark:hover:bg-white/10 transition-all"
-                    >
-                        {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                    </button>
-                </div>
-            </div>
+            )}
 
             {/* Content Area */}
             {viewMode === 'grid' ? (
-                <div className={getGridClass(examTimers.length) + ' gap-2 p-2 pt-14'}>
+                <div className={getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20'}>
                     {examTimers.map((timer, index) => (
                         <div
                             key={timer.id}
@@ -302,7 +311,33 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                     onAddExtraTime={setExtraTimeTimerId}
                     onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
                     onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
+                    onToggleView={() => setViewMode('grid')}
+                    onExit={handleExit}
+                    onSettings={onSettings}
+                    onToggleFullscreen={toggleFullscreen}
+                    isFullscreen={isFullscreen}
+                    onAnnounce={() => setShowAnnounceModal(true)}
                 />
+            )}
+
+            {/* Status Legend */}
+            {viewMode === 'grid' && (
+                <div className={`absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-800 px-6 py-2.5 rounded-full shadow-xl flex items-center gap-8">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+                            <span className="text-[11px] font-bold tracking-wider text-gray-600 dark:text-gray-300">NORMAL</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse" />
+                            <span className="text-[11px] font-bold tracking-wider text-gray-600 dark:text-gray-300">WARNING</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                            <span className="text-[11px] font-bold tracking-wider text-gray-600 dark:text-gray-300">CRITICAL</span>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Modals */}
