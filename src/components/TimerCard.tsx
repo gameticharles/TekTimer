@@ -47,7 +47,7 @@ function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
     } else if (status === 'Ended') {
         state.bg = 'bg-[#1a1212]';
         state.border = 'border-red-900/30';
-        state.timeColor = 'text-red-500 dark:text-red-400 blur-sm opacity-60';
+        state.timeColor = 'text-red-500 dark:text-red-400 opacity-80';
         state.badge = 'ENDED';
         state.badgeColor = 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400';
         state.anim = '';
@@ -154,15 +154,8 @@ export default function TimerCard({
                 >
                     <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>
-                
-                {/* Time's Up Overlay Pill */}
-                {timer.status === 'Ended' && (
-                    <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <div className="bg-red-500 text-white font-bold text-xl md:text-3xl px-8 py-3 md:px-12 md:py-4 rounded-full shadow-2xl shadow-red-500/50 border border-red-400/30 animate-in fade-in zoom-in duration-300">
-                            Time's Up!
-                        </div>
-                    </div>
-                )}
+
+                {/* Time's Up Screen is handled by DismissOverlay */}
             </div>
 
             {/* Progress Bar */}

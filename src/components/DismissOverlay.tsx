@@ -13,7 +13,7 @@ export default function DismissOverlay({ timer, settings, onDismiss }: DismissOv
     const timerName = 'courseCode' in timer ? timer.courseCode : timer.label;
 
     return (
-        <div className="absolute inset-0 bg-red-950 flex flex-col items-center justify-center z-10 rounded-xl">
+        <div className="absolute inset-0 bg-red-950/30 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
             <p className="text-4xl md:text-5xl font-black text-white mb-3 text-center px-4 animate-pulse">
                 {settings.endMessage}
             </p>

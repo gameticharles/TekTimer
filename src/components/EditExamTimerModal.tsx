@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { ExamTimer } from '../lib/types';
 
@@ -20,15 +20,9 @@ export default function EditExamTimerModal({ timer, onUpdate, onClose }: EditExa
     const [hours, setHours] = useState(Math.floor(timer.durationSeconds / 3600));
     const [minutes, setMinutes] = useState(Math.floor((timer.durationSeconds % 3600) / 60));
 
-    // Update state if timer prop changes (unlikely in modal but good practice)
-    useEffect(() => {
-        setCourseCode(timer.courseCode);
-        setCourseTitle(timer.courseTitle || '');
-        setProgram(timer.program);
-        setStudentCount(timer.studentCount.toString());
-        setHours(Math.floor(timer.durationSeconds / 3600));
-        setMinutes(Math.floor((timer.durationSeconds % 3600) / 60));
-    }, [timer]);
+    // State is initialized once from the timer prop. We intentionally
+    // do not update it via useEffect when timer changes to prevent overwriting
+    // user input as the timer continues to tick down in the backend.
 
     const totalSeconds = hours * 3600 + minutes * 60;
     const isValid = totalSeconds >= 60; // Minimum 1 minute duration
