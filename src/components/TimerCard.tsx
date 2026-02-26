@@ -161,7 +161,7 @@ export default function TimerCard({
                 </div>
                 {/* Time Remaining Label */}
                 <div className="absolute bottom-0 w-full flex justify-center">
-                    <p className={`uppercase tracking-widest text-base md:text-lg font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                    <p className={`uppercase tracking-widest text-sm font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
                         Time Remaining
                     </p>
                 </div>
