@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 
 interface AddExamTimerModalProps {
-    onAdd: (courseCode: string, program: string, studentCount: number, durationSeconds: number) => void;
+    onAdd: (courseCode: string, courseTitle: string | undefined, program: string, studentCount: number, durationSeconds: number) => void;
     onClose: () => void;
     timerCount: number;
 }
 
 export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExamTimerModalProps) {
     const [courseCode, setCourseCode] = useState('');
+    const [courseTitle, setCourseTitle] = useState('');
     const [program, setProgram] = useState('');
     const [studentCount, setStudentCount] = useState('');
     const [hours, setHours] = useState(2);
@@ -20,7 +21,7 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!isValid) return;
-        onAdd(courseCode.trim(), program.trim(), parseInt(studentCount, 10) || 0, totalSeconds);
+        onAdd(courseCode.trim(), courseTitle.trim() || undefined, program.trim(), parseInt(studentCount, 10) || 0, totalSeconds);
         onClose();
     };
 
@@ -46,9 +47,24 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
                             type="text"
                             value={courseCode}
                             onChange={(e) => setCourseCode(e.target.value)}
-                            placeholder="e.g. GEOM 261 (Optional)"
+                            placeholder="e.g. GEOM 261"
                             maxLength={100}
                             autoFocus
+                            className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                         text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500/50
+                         focus:ring-1 focus:ring-blue-500/20 transition-colors"
+                        />
+                    </div>
+
+                    {/* Course Title */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 transition-colors">Course Title</label>
+                        <input
+                            type="text"
+                            value={courseTitle}
+                            onChange={(e) => setCourseTitle(e.target.value)}
+                            placeholder="e.g. Intro to Geomatic Engineering (Optional)"
+                            maxLength={150}
                             className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                          text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500/50
                          focus:ring-1 focus:ring-blue-500/20 transition-colors"

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import QuizSetupModal from '../components/QuizSetupModal';
 import QuizTimerDisplay from '../components/QuizTimer';
 import ControlBar from '../components/ControlBar';
-import ProgressBar from '../components/ProgressBar';
 import BlackoutScreen from '../components/BlackoutScreen';
 import AnnouncementModal from '../components/AnnouncementModal';
 import EditQuizTimerModal from '../components/EditQuizTimerModal';
@@ -119,18 +118,6 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
             {timer && !showSetup && (
                 <>
                     <QuizTimerDisplay timer={timer} settings={settings} />
-
-                    {/* Progress Bar — bottom of screen */}
-                    {settings.showProgressBar && (
-                        <div className="absolute bottom-0 left-0 right-0">
-                            <ProgressBar
-                                remainingSeconds={timer.remainingSeconds}
-                                durationSeconds={timer.durationSeconds}
-                                status={timer.status}
-                                thickness={settings.progressBarHeight ?? 20}
-                            />
-                        </div>
-                    )}
 
                     {/* Control Bar */}
                     <ControlBar

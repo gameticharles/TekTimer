@@ -86,8 +86,8 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
     }, [store, onExit]);
 
     const handleAddTimer = useCallback(
-        async (courseCode: string, program: string, studentCount: number, durationSeconds: number) => {
-            await store.createExamTimer(courseCode, program, studentCount, durationSeconds);
+        async (courseCode: string, courseTitle: string | undefined, program: string, studentCount: number, durationSeconds: number) => {
+            await store.createExamTimer(courseCode, courseTitle, program, studentCount, durationSeconds);
         },
         [store],
     );
@@ -119,7 +119,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
     // Empty state
     if (examTimers.length === 0) {
         return (
-            <div className="relative">
+            <div className="relative h-screen w-screen bg-gray-50 dark:bg-gray-950 transition-colors">
                 <EmptyState onAddTimer={() => setShowAddModal(true)} />
                 {/* Toolbar even in empty state */}
                 <div className={`absolute top-0 left-0 right-0 px-4 py-3 flex items-center justify-between
@@ -149,6 +149,7 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
             {/* Toolbar (Only for Grid View) */}
             {viewMode === 'grid' && (
                 <div
+                    data-tauri-drag-region
                     className={`absolute top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between
                         bg-white/90 dark:bg-black/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 transition-all duration-300
                         ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}

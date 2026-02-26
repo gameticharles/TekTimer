@@ -3,7 +3,11 @@ import type { ExamTimer, AppSettings } from '../lib/types';
 import { Pause, Play, LayoutGrid, Mic, Settings, Maximize, Minimize, Power, Target, Clock, RotateCcw } from 'lucide-react';
 import ProgressBar from './ProgressBar';
 import DynamicTimeDisplay from './DynamicTimeDisplay';
+import FontSizeControl from './FontSizeControl';
 import { formatTime } from '../lib/formatTime';
+import { useProjectedEndTime } from '../hooks/useProjectedEndTime';
+import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
+import { getBaseClampKey } from '../lib/gridLayout';
 
 interface CenterStageViewProps {
     timers: ExamTimer[];
@@ -29,11 +33,7 @@ interface CenterStageViewProps {
 
 const CYCLE_INTERVAL_MS = 10000; // 10 seconds
 
-function formatEndTime(unixSeconds: number | null) {
-    if (!unixSeconds) return '';
-    const d = new Date(unixSeconds * 1000);
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
+
 
 export default function CenterStageView({
     timers,
@@ -48,7 +48,9 @@ export default function CenterStageView({
     onSettings,
     onToggleFullscreen,
     isFullscreen,
-    onAnnounce
+    onAnnounce,
+    onFontSizeChange,
+    onFontSizeReset
 }: CenterStageViewProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isAutoCycling, setIsAutoCycling] = useState(true);
@@ -136,12 +138,24 @@ export default function CenterStageView({
         badgeClass = 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
     }
 
-    const formattedEndTime = formatEndTime(activeTimer.endTimeUnix);
+    const formattedEndTime = useProjectedEndTime(activeTimer.status, activeTimer.remainingSeconds, activeTimer.endTimeUnix);
+
+    // Font Sizing matches what would be seen in Grid View (Base clamp uses '1' timer card for the massive display)
+    const effectiveScale = getEffectiveScale(settings.globalFontScale, activeTimer.fontSizeOverride);
+    const clampKey = getBaseClampKey(1);
+    const baseClamp = getBaseClamp(clampKey);
+    const computedSize = scaleClamp(baseClamp, effectiveScale);
 
     return (
-        <div className="flex flex-col h-full w-full bg-gray-50 dark:bg-black p-6 relative transition-colors">
+        <div
+            className="flex flex-col h-full w-full bg-gray-50 dark:bg-black p-6 relative transition-colors"
+            style={{ '--exam-clock-size': computedSize } as React.CSSProperties}
+        >
             {/* Top Toolbar */}
-            <div className={`flex items-center justify-between mb-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div
+                className={`flex items-center justify-between mb-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                data-tauri-drag-region
+            >
                 {/* Header Title */}
                 <div className="flex items-center gap-4">
                     <div className="bg-emerald-600 text-white p-2.5 rounded-xl shadow-sm shadow-emerald-500/20">
@@ -217,31 +231,34 @@ export default function CenterStageView({
             </div>
 
             {/* Horizontal Tabs */}
-            <div className={`flex items-center gap-3 overflow-x-auto pb-4 mb-4 hide-scrollbar transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-4 hide-scrollbar pt-2 pl-2">
                 {timers.map((t, idx) => {
                     const isSelected = idx === safeActiveIndex;
                     const isTabEnded = t.status === 'Ended';
                     const isTabWarning = t.status === 'Running' && t.remainingSeconds <= settings.warningThresholdSeconds;
                     const isTabCritical = t.status === 'Running' && t.remainingSeconds <= settings.criticalThresholdSeconds;
 
+                    let barColor = 'border-blue-500';
                     let dotColor = 'bg-blue-500';
-                    if (isTabEnded || isTabCritical) dotColor = 'bg-red-500';
-                    else if (isTabWarning) dotColor = 'bg-amber-500';
-                    else if (t.status === 'Paused') dotColor = 'bg-gray-400';
+                    if (isTabEnded || isTabCritical) { barColor = 'border-red-500'; dotColor = 'bg-red-500'; }
+                    else if (isTabWarning) { barColor = 'border-amber-500'; dotColor = 'bg-amber-500'; }
+                    else if (t.status === 'Paused') { barColor = 'border-gray-400'; dotColor = 'bg-gray-400'; }
 
                     return (
                         <button
                             key={t.id}
                             onClick={() => handleSelect(idx)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all shrink-0 ${isSelected
-                                ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-md'
-                                : 'bg-transparent border-transparent hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 transition-all shrink-0 shadow-sm
+                                ${barColor} 
+                                ${isSelected
+                                    ? 'bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-y-gray-700 dark:border-r-gray-700 shadow-md ring-1 ring-blue-500/20'
+                                    : 'bg-transparent border-y border-r border-transparent hover:bg-white/50 dark:hover:bg-gray-800/50'
                                 }`}
                         >
-                            <div className={`w-2 h-2 rounded-full ${dotColor} ${isTabCritical && t.status === 'Running' ? 'animate-pulse' : ''}`} />
                             <div className="flex flex-col items-start font-medium text-left">
-                                <span className={`text-sm truncate max-w-[140px] ${isSelected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                                <span className={`flex items-center gap-2 text-sm truncate max-w-[140px] ${isSelected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
                                     {t.courseCode || 'Untitled'}
+                                    <div className={`w-1.5 h-1.5 rounded-full ${dotColor} ${isTabCritical && t.status === 'Running' ? 'animate-pulse' : ''}`} />
                                 </span>
                                 <span className={`text-xs font-mono tracking-tight ${isSelected ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
                                     {formatTime(t.remainingSeconds, true)}
@@ -270,6 +287,7 @@ export default function CenterStageView({
 
                     <h2 className="text-4xl md:text-5xl lg:text-7xl font-bold text-gray-900 dark:text-white tracking-tight mb-4 transition-colors">
                         {activeTimer.courseCode || 'Untitled Timer'}
+                        {activeTimer.courseTitle ? `: ${activeTimer.courseTitle}` : ''}
                     </h2>
 
                     {(activeTimer.program || activeTimer.studentCount > 0) && (
@@ -281,17 +299,14 @@ export default function CenterStageView({
 
                 {/* Massive Clock */}
                 <div className="flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10">
-                    <div className={`exam-clock massive-clock ${timeColorClass} transition-colors tracking-tighter`} style={{ fontSize: 'min(28vw, 25vh)' }}>
+                    <div className={`exam-clock massive-clock ${timeColorClass} transition-colors tracking-tighter`} style={{ fontSize: 'var(--exam-clock-size, min(28vw, 25vh))' }}>
                         <DynamicTimeDisplay seconds={activeTimer.remainingSeconds} />
                     </div>
-                    <p className={`uppercase tracking-widest text-sm font-bold mt-4 ${activeTimer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColorClass}`}>
-                        Time Remaining
-                    </p>
                 </div>
 
                 {/* Progress Bar - Wide */}
                 {settings.showProgressBar && (
-                    <div className="w-full max-w-5xl mt-8 relative z-10">
+                    <div className="w-full max-w-5xl mt-2 mb-4 relative z-10">
                         <ProgressBar
                             remainingSeconds={activeTimer.remainingSeconds}
                             durationSeconds={activeTimer.durationSeconds}
@@ -300,6 +315,11 @@ export default function CenterStageView({
                         />
                     </div>
                 )}
+
+                {/* Time Remaining Label */}
+                <p className={`uppercase tracking-widest text-sm font-bold relative z-10 ${activeTimer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColorClass}`}>
+                    Time Remaining
+                </p>
 
                 {/* Action Buttons */}
                 <div className={`absolute bottom-8 right-8 flex items-center gap-3 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -340,6 +360,17 @@ export default function CenterStageView({
                     >
                         <RotateCcw size={18} />
                     </button>
+                </div>
+
+                {/* Font Size Control - Bottom Left */}
+                <div className={`absolute bottom-8 left-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <FontSizeControl
+                        scale={effectiveScale}
+                        isOverride={activeTimer.fontSizeOverride !== null}
+                        onChange={(s) => onFontSizeChange(activeTimer.id, s)}
+                        onReset={() => onFontSizeReset(activeTimer.id)}
+                        compact
+                    />
                 </div>
 
                 {/* Ambient glow effect behind timer (Optional, for aesthetics) */}

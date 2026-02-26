@@ -141,11 +141,12 @@ export function useTimerStore(settings: AppSettings) {
     const createExamTimer = useCallback(
         async (
             courseCode: string,
+            courseTitle: string | undefined,
             program: string,
             studentCount: number,
             durationSeconds: number,
         ) => {
-            const label = `${courseCode} · ${program}`;
+            const label = [courseCode, courseTitle, program].filter(Boolean).join(' · ');
             const result = await invoke<{ id: string }>('create_timer', {
                 durationSeconds,
                 label,
@@ -162,6 +163,7 @@ export function useTimerStore(settings: AppSettings) {
                 endTimeUnix: null,
                 mode: 'exam',
                 courseCode,
+                courseTitle,
                 program,
                 studentCount,
                 announcementSchedule: settings.defaultAnnouncementSchedule.map(a => ({ ...a, id: `${a.id}-${Date.now()}` })),
@@ -185,9 +187,9 @@ export function useTimerStore(settings: AppSettings) {
     const updateExamTimer = useCallback(
         async (
             id: string,
-            updates: { courseCode: string; program: string; studentCount: number; durationSeconds: number }
+            updates: { courseCode: string; courseTitle?: string; program: string; studentCount: number; durationSeconds: number }
         ) => {
-            const label = `${updates.courseCode} · ${updates.program}`;
+            const label = [updates.courseCode, updates.courseTitle, updates.program].filter(Boolean).join(' · ');
 
             // Re-calculate the backend timer adjustments via new invoke command
             const result = await invoke<{ remaining_seconds: number, status: TimerStatus, end_time_unix: number | null }>('update_timer', {
@@ -203,6 +205,7 @@ export function useTimerStore(settings: AppSettings) {
                     return {
                         ...t,
                         courseCode: updates.courseCode,
+                        courseTitle: updates.courseTitle,
                         program: updates.program,
                         studentCount: updates.studentCount,
                         durationSeconds: updates.durationSeconds,

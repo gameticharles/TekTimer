@@ -1,5 +1,6 @@
 import type { QuizTimer as QuizTimerType, AppSettings } from '../lib/types';
 import DynamicTimeDisplay from './DynamicTimeDisplay';
+import ProgressBar from './ProgressBar';
 import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
 
 interface QuizTimerProps {
@@ -44,14 +45,25 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
                 </p>
             )}
 
-            {/* Clock */}
-            <div className="w-full flex items-center justify-center min-h-0">
+            {/* Clock and Progress Bar */}
+            <div className="w-full flex flex-col items-center justify-center min-h-0">
                 <div
                     key={beatKey}
                     className={`quiz-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full`}
                 >
                     <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>
+                
+                {settings.showProgressBar && (
+                    <div className="w-full max-w-4xl mt-8 px-6">
+                        <ProgressBar
+                            remainingSeconds={timer.remainingSeconds}
+                            durationSeconds={timer.durationSeconds}
+                            status={timer.status}
+                            thickness={settings.progressBarHeight ?? 20}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Status indicator */}

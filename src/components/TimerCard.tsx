@@ -7,6 +7,7 @@ import ProgressBar from './ProgressBar';
 import DismissOverlay from './DismissOverlay';
 import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
 import DynamicTimeDisplay from './DynamicTimeDisplay';
+import { useProjectedEndTime } from '../hooks/useProjectedEndTime';
 import type { ExamTimer, AppSettings, AnnouncementEntry } from '../lib/types';
 
 interface TimerCardProps {
@@ -76,12 +77,6 @@ function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
     return state;
 }
 
-function formatEndTime(unixSeconds: number | null) {
-    if (!unixSeconds) return '';
-    const d = new Date(unixSeconds * 1000);
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
 export default function TimerCard({
     timer,
     settings,
@@ -114,7 +109,7 @@ export default function TimerCard({
         ? timer.remainingSeconds
         : undefined;
 
-    const formattedEndTime = formatEndTime(timer.endTimeUnix);
+    const formattedEndTime = useProjectedEndTime(timer.status, timer.remainingSeconds, timer.endTimeUnix);
 
     return (
         <div
@@ -130,6 +125,7 @@ export default function TimerCard({
                 <div className="flex-1 min-w-0 pr-4">
                     <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
                         {timer.courseCode || 'Untitled'}
+                        {timer.courseTitle ? `: ${timer.courseTitle}` : ''}
                     </h3>
                     {(timer.program || timer.studentCount > 0) && (
                         <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-3xl lg:text-3xl' : 'text-base md:text-lg'}`}>
@@ -151,25 +147,18 @@ export default function TimerCard({
                 </div>
             </div>
 
-            {/* Time Display */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full mb-8 relative">
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full mb-4 relative">
                 <div
                     key={beatKey}
                     className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full transition-colors h-full`}
                 >
                     <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>
-                {/* Time Remaining Label */}
-                <div className="absolute bottom-0 w-full flex justify-center">
-                    <p className={`uppercase tracking-widest text-sm font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
-                        Time Remaining
-                    </p>
-                </div>
             </div>
 
             {/* Progress Bar */}
             {settings.showProgressBar && (
-                <div className="mb-6 w-full">
+                <div className="mb-4 w-full">
                     <ProgressBar
                         remainingSeconds={timer.remainingSeconds}
                         durationSeconds={timer.durationSeconds}
@@ -178,6 +167,13 @@ export default function TimerCard({
                     />
                 </div>
             )}
+
+            {/* Time Remaining Label below progress bar */}
+            <div className="w-full flex justify-center mb-6">
+                <p className={`uppercase tracking-widest text-sm font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                    Time Remaining
+                </p>
+            </div>
 
             {/* Controls */}
             <div className="flex items-center justify-between mt-auto">

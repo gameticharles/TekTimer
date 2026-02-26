@@ -30,6 +30,7 @@ export interface QuizTimer extends TimerBase {
 export interface ExamTimer extends TimerBase {
     mode: 'exam';
     courseCode: string;
+    courseTitle?: string;
     program: string;
     studentCount: number;
 }
