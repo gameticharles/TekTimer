@@ -263,7 +263,7 @@ export default function CenterStageView({
                         </span>
                         {formattedEndTime && (
                             <span className="px-4 py-1.5 bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300 text-xs font-bold tracking-widest rounded-full border border-gray-200 dark:border-gray-800/50">
-                                ENDS {formattedEndTime}
+                                ENDS AT {formattedEndTime}
                             </span>
                         )}
                     </div>

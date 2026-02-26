@@ -132,7 +132,7 @@ export default function TimerCard({
                         {timer.courseCode || 'Untitled'}
                     </h3>
                     {(timer.program || timer.studentCount > 0) && (
-                        <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-xl md:text-2xl' : 'text-sm md:text-base'}`}>
+                        <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-3xl lg:text-3xl' : 'text-base md:text-lg'}`}>
                             {[timer.program, timer.studentCount > 0 ? `${timer.studentCount} Students` : null].filter(Boolean).join(' • ')}
                         </p>
                     )}
@@ -140,12 +140,12 @@ export default function TimerCard({
 
                 {/* Badge & End Time */}
                 <div className="flex flex-col items-end shrink-0">
-                    <span className={`px-3 py-1 text-xs md:text-sm font-bold rounded-full mb-1.5 transition-colors ${badgeColor}`}>
+                    <span className={`px-4 py-1.5 text-xs md:text-sm font-bold tracking-widest rounded-full mb-1.5 transition-colors ${badgeColor}`}>
                         {badge}
                     </span>
                     {formattedEndTime && (
-                        <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">
-                            Ends {formattedEndTime}
+                        <span className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium">
+                            Ends at {formattedEndTime}
                         </span>
                     )}
                 </div>
@@ -161,7 +161,7 @@ export default function TimerCard({
                 </div>
                 {/* Time Remaining Label */}
                 <div className="absolute bottom-0 w-full flex justify-center">
-                    <p className={`uppercase tracking-widest text-xs font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                    <p className={`uppercase tracking-widest text-sm font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
                         Time Remaining
                     </p>
                 </div>

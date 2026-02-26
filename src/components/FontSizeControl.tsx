@@ -52,7 +52,7 @@ export default function FontSizeControl({
     }
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
             <button
                 onClick={() => onChange(Math.max(SCALE_MIN, scale - SCALE_STEP))}
                 disabled={scale <= SCALE_MIN}
