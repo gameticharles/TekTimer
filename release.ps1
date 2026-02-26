@@ -255,23 +255,17 @@ if ($gitStatus) {
 # ============================================================
 if (-not $SkipTests) {
     Write-Step "Running pre-release checks..."
-    Push-Location "TekTimer"
-    try {
-        if ($DryRun) {
-            Write-DryRun "Would run: npx tsc --noEmit"
-        }
-        else {
-            Write-Info "Type checking..."
-            npx tsc --noEmit
-            if ($LASTEXITCODE -ne 0) {
-                Write-ErrorMsg "TypeScript check failed!"
-                exit 1
-            }
-            Write-Success "Type check passed"
-        }
+    if ($DryRun) {
+        Write-DryRun "Would run: npx tsc --noEmit"
     }
-    finally {
-        Pop-Location
+    else {
+        Write-Info "Type checking..."
+        npx tsc --noEmit
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMsg "TypeScript check failed!"
+            exit 1
+        }
+        Write-Success "Type check passed"
     }
 }
 else {
