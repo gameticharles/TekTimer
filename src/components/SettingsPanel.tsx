@@ -92,18 +92,40 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                         </div>
 
                         {/* Show Progress Bar */}
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Show Progress Bar</span>
-                            <button
-                                onClick={() => onUpdate({ showProgressBar: !settings.showProgressBar })}
-                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.showProgressBar ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'
-                                    }`}
-                            >
-                                <div
-                                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.showProgressBar ? 'translate-x-5' : 'translate-x-0'
+                        <div className="flex flex-col mb-4 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800 transition-colors gap-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Show Progress Bar</span>
+                                <button
+                                    onClick={() => onUpdate({ showProgressBar: !settings.showProgressBar })}
+                                    className={`relative w-11 h-6 rounded-full transition-colors ${settings.showProgressBar ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'
                                         }`}
-                                />
-                            </button>
+                                >
+                                    <div
+                                        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.showProgressBar ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {settings.showProgressBar && (
+                                <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm text-gray-600 dark:text-gray-400">Thickness</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="range"
+                                                min={4}
+                                                max={32}
+                                                step={2}
+                                                value={settings.progressBarHeight ?? 12}
+                                                onChange={(e) => onUpdate({ progressBarHeight: Number(e.target.value) })}
+                                                className="w-24 accent-emerald-500"
+                                            />
+                                            <span className="text-xs font-mono text-gray-500 dark:text-gray-400 w-8">{settings.progressBarHeight ?? 12}px</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Theme */}

@@ -56,6 +56,7 @@ export interface AppSettings {
     customAlarmPath: string | null;
     endMessage: string;
     showProgressBar: boolean;
+    progressBarHeight: number;
     theme: 'system' | 'light' | 'dark';
     ignoreCompletedInCenterStage: boolean;
 
@@ -89,6 +90,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     customAlarmPath: null,
     endMessage: "Time's Up — Pens Down",
     showProgressBar: true,
+    progressBarHeight: 12, // Default 12px
     theme: 'system',
     ignoreCompletedInCenterStage: true,
 

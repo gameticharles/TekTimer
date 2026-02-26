@@ -161,8 +161,8 @@ export default function CenterStageView({
                     <button
                         onClick={() => setIsAutoCycling(!isAutoCycling)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors ${isAutoCycling
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
-                                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                             }`}
                         title={isAutoCycling ? 'Pause Auto-cycle' : 'Resume Auto-cycle'}
                     >
@@ -234,8 +234,8 @@ export default function CenterStageView({
                             key={t.id}
                             onClick={() => handleSelect(idx)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all shrink-0 ${isSelected
-                                    ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-md'
-                                    : 'bg-transparent border-transparent hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+                                ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-md'
+                                : 'bg-transparent border-transparent hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
                                 }`}
                         >
                             <div className={`w-2 h-2 rounded-full ${dotColor} ${isTabCritical && t.status === 'Running' ? 'animate-pulse' : ''}`} />
@@ -296,7 +296,7 @@ export default function CenterStageView({
                             remainingSeconds={activeTimer.remainingSeconds}
                             durationSeconds={activeTimer.durationSeconds}
                             status={activeTimer.status}
-                            variant="fullwidth"
+                            thickness={settings.progressBarHeight ?? 12}
                         />
                     </div>
                 )}

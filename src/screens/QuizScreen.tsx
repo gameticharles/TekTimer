@@ -127,7 +127,7 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
                                 remainingSeconds={timer.remainingSeconds}
                                 durationSeconds={timer.durationSeconds}
                                 status={timer.status}
-                                variant="fullwidth"
+                                thickness={settings.progressBarHeight ?? 12}
                             />
                         </div>
                     )}

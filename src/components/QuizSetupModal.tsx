@@ -47,7 +47,7 @@ export default function QuizSetupModal({ onStart, onClose }: QuizSetupModalProps
                             value={label}
                             onChange={(e) => setLabel(e.target.value)}
                             placeholder="e.g. Midterm Quiz"
-                            maxLength={60}
+                            maxLength={100}
                             className="w-full px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                          text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-500/50
                          focus:ring-1 focus:ring-amber-500/20 transition-colors"

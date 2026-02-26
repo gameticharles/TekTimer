@@ -71,7 +71,7 @@ export default function MiniTimerCard({ timer, settings, isActive, onClick }: Mi
                         remainingSeconds={timer.remainingSeconds}
                         durationSeconds={timer.durationSeconds}
                         status={timer.status}
-                        variant="fullwidth"
+                        thickness={4}
                     />
                 </div>
             )}

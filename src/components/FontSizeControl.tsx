@@ -1,4 +1,4 @@
-import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 
 interface FontSizeControlProps {
@@ -22,29 +22,29 @@ export default function FontSizeControl({
                 <button
                     onClick={() => onChange(Math.max(SCALE_MIN, scale - SCALE_STEP))}
                     disabled={scale <= SCALE_MIN}
-                    className={`p-1 rounded text-gray-400 hover:text-white hover:bg-white/10 
-                      disabled:opacity-30 disabled:cursor-not-allowed transition-all relative
-                      ${isOverride ? 'text-amber-400' : ''}`}
+                    className={`px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white
+                      disabled:opacity-30 disabled:cursor-not-allowed transition-all relative font-bold text-sm tracking-tighter
+                      ${isOverride ? 'text-amber-600 dark:text-amber-400' : ''}`}
                     aria-label="Decrease font size"
                     title={`Font: ${scale}%${isOverride ? ' (override)' : ' (global)'}`}
                 >
-                    <Minus size={14} />
+                    A−
                     {isOverride && (
-                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
                     )}
                 </button>
                 <button
                     onClick={() => onChange(Math.min(SCALE_MAX, scale + SCALE_STEP))}
                     disabled={scale >= SCALE_MAX}
-                    className={`p-1 rounded text-gray-400 hover:text-white hover:bg-white/10 
-                      disabled:opacity-30 disabled:cursor-not-allowed transition-all relative
-                      ${isOverride ? 'text-amber-400' : ''}`}
+                    className={`px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white
+                      disabled:opacity-30 disabled:cursor-not-allowed transition-all relative font-bold text-sm tracking-tighter
+                      ${isOverride ? 'text-amber-600 dark:text-amber-400' : ''}`}
                     aria-label="Increase font size"
                     title={`Font: ${scale}%${isOverride ? ' (override)' : ' (global)'}`}
                 >
-                    <Plus size={14} />
+                    A+
                     {isOverride && (
-                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
                     )}
                 </button>
             </div>

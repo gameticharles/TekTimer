@@ -152,17 +152,19 @@ export default function TimerCard({
             </div>
 
             {/* Time Display */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full mb-6 relative">
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full mb-8 relative">
                 <div
                     key={beatKey}
-                    className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full transition-colors`}
+                    className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full transition-colors h-full`}
                 >
                     <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>
                 {/* Time Remaining Label */}
-                <p className={`uppercase tracking-widest text-xs font-bold mt-2 ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
-                    Time Remaining
-                </p>
+                <div className="absolute bottom-0 w-full flex justify-center">
+                    <p className={`uppercase tracking-widest text-xs font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                        Time Remaining
+                    </p>
+                </div>
             </div>
 
             {/* Progress Bar */}
@@ -172,6 +174,7 @@ export default function TimerCard({
                         remainingSeconds={timer.remainingSeconds}
                         durationSeconds={timer.durationSeconds}
                         status={timer.status}
+                        thickness={settings.progressBarHeight ?? 12}
                     />
                 </div>
             )}
