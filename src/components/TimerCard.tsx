@@ -140,11 +140,11 @@ export default function TimerCard({
 
                 {/* Badge & End Time */}
                 <div className="flex flex-col items-end shrink-0">
-                    <span className={`px-4 py-1.5 text-xs md:text-sm font-bold tracking-widest rounded-full mb-1.5 transition-colors ${badgeColor}`}>
+                    <span className={`px-4 py-1.5 text-sm md:text-base font-bold tracking-widest rounded-full mb-1.5 transition-colors ${badgeColor}`}>
                         {badge}
                     </span>
                     {formattedEndTime && (
-                        <span className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium">
+                        <span className="text-base md:text-lg text-gray-500 dark:text-gray-400 font-medium">
                             Ends at {formattedEndTime}
                         </span>
                     )}
@@ -161,7 +161,7 @@ export default function TimerCard({
                 </div>
                 {/* Time Remaining Label */}
                 <div className="absolute bottom-0 w-full flex justify-center">
-                    <p className={`uppercase tracking-widest text-sm font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                    <p className={`uppercase tracking-widest text-base md:text-lg font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
                         Time Remaining
                     </p>
                 </div>
