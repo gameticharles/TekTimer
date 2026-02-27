@@ -64,6 +64,20 @@ export function useTimerStore(settings: AppSettings) {
                         announcementSchedule: [...t.announcementSchedule]
                     };
 
+                    const justEnded = t.status === 'Running' && payload.status === 'Ended';
+
+                    if (settings.announcementsEnabled && justEnded) {
+                        const resolvedText = resolveTemplate(settings.endMessage, updated);
+                        (async () => {
+                            const finalText = await enhanceWithLLM(resolvedText, settings);
+                            announcementQueue.enqueue({
+                                id: `${updated.id}-sys-end`,
+                                text: finalText,
+                                priority: 1,
+                            });
+                        })();
+                    }
+
                     if (settings.announcementsEnabled && updated.status === 'Running') {
                         updated.announcementSchedule = updated.announcementSchedule.map((entry) => {
                             if (!entry.enabled || entry.hasBeenSpoken) return entry;
