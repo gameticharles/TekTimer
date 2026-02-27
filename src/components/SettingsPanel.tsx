@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    X, RotateCcw, Volume2, VolumeX, Monitor, Sun, Moon, Mic, MessagesSquare, CheckCircle2,
-    RefreshCw, Play, Upload, Loader2
+    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2
 } from 'lucide-react';
 import { getTTSProvider } from '../lib/tts/getTTSProvider';
 import type { AppSettings } from '../lib/types';
@@ -49,7 +48,6 @@ function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings,
 
 
 export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: SettingsPanelProps) {
-    const [activeTab, setActiveTab] = useState<'general' | 'announcements'>('general');
     const [testPlaying, setTestPlaying] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
