@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2
+    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw
 } from 'lucide-react';
 import { getTTSProvider } from '../lib/tts/getTTSProvider';
 import type { AppSettings } from '../lib/types';
@@ -9,6 +9,7 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { exists, mkdir } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
+import { check } from '@tauri-apps/plugin-updater';
 import { audioManager } from '../lib/audioManager';
 
 interface SettingsPanelProps {
@@ -50,6 +51,28 @@ function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings,
 export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: SettingsPanelProps) {
     const [testPlaying, setTestPlaying] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+    const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+
+    const handleCheckUpdate = async () => {
+        try {
+            setIsCheckingUpdate(true);
+            setUpdateMessage("Checking for updates...");
+            const update = await check();
+            if (update) {
+                setUpdateMessage(`Downloading v${update.version}...`);
+                await update.downloadAndInstall();
+                setUpdateMessage("Update installed! Please restart the app.");
+            } else {
+                setUpdateMessage("You are up to date!");
+            }
+        } catch (error) {
+            console.error(error);
+            setUpdateMessage("Failed to check for updates.");
+        } finally {
+            setIsCheckingUpdate(false);
+        }
+    };
 
     const handleSelectAlarm = async () => {
         try {
@@ -537,6 +560,27 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                 <p className="text-xs text-gray-500">Requires Ollama running locally.</p>
                             </div>
                         )}
+                    </section>
+
+                    {/* ─── UPDATES ────────────────────────────────────────── */}
+                    <section>
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Software Updates</h3>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={handleCheckUpdate}
+                                disabled={isCheckingUpdate}
+                                className="w-full py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium text-sm
+                         hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isCheckingUpdate ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                                {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                            </button>
+                            {updateMessage && (
+                                <p className="text-xs text-center text-gray-600 dark:text-gray-400 mt-1">
+                                    {updateMessage}
+                                </p>
+                            )}
+                        </div>
                     </section>
 
                     {/* ─── RESET ──────────────────────────────────────── */}

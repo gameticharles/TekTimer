@@ -1,3 +1,6 @@
+## [0.2.1] - 2026-02-27
+
+Implemented auto update
 ## [0.2.0] - 2026-02-27
 
 Fixed UI issues
@@ -15,6 +18,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
