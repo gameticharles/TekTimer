@@ -14,18 +14,52 @@ export const audioManager = {
         const audio = new Audio(src);
         audio.loop = true;
         audio.volume = volume;
-        audio.play().catch((err) => {
-            console.error('Audio play failed:', err);
-            // Fallback to bell.mp3 if custom file fails
-            if (customPath) {
-                const fallback = new Audio(bellUrl);
-                fallback.loop = true;
-                fallback.volume = volume;
-                fallback.play().catch(console.error);
-                audioInstances.set(timerId, fallback);
-            }
+        audio.play().then(() => {
+            audioInstances.set(timerId, audio);
+        }).catch((err) => {
+            console.error('Audio play failed, using fallback synthesizer:', err);
+
+            // If the audio file (custom or default) fails (e.g. strict autoplay or asset missing),
+            // play a continuous repeating synthetic alarm using our context.
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContextClass) return;
+
+            const ctx = new AudioContextClass();
+
+            // Create an interval to beep endlessly like an alarm clock until stopped
+            const playSynthAlarm = () => {
+                if (ctx.state === 'closed') return;
+
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                oscillator.type = 'square'; // harsher sound for main alarm
+                oscillator.frequency.value = 880; // A5 note
+
+                gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.3);
+            };
+
+            playSynthAlarm(); // play immediately
+            const intervalId = setInterval(playSynthAlarm, 600); // repeat every 600ms
+
+            // Store a mock "audio" element so stop() can clear the interval
+            const mockAudio = {
+                pause: () => {
+                    clearInterval(intervalId);
+                    if (ctx.state !== 'closed') ctx.close().catch(console.error);
+                },
+                currentTime: 0
+            } as unknown as HTMLAudioElement;
+
+            audioInstances.set(timerId, mockAudio);
         });
-        audioInstances.set(timerId, audio);
     },
 
     stop(timerId: string): void {
