@@ -266,6 +266,14 @@ if (-not $SkipTests) {
             exit 1
         }
         Write-Success "Type check passed"
+
+        Write-Info "Rebuilding icons..."
+        npm run tauri icon public/icon.png
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMsg "Icon generation failed!"
+            exit 1
+        }
+        Write-Success "App icons regenerated"
     }
 }
 else {
