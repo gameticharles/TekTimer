@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
-import { X, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import {
+    X, RotateCcw, Volume2, VolumeX, Monitor, Sun, Moon, Mic, MessagesSquare, CheckCircle2,
+    RefreshCw, Play, Upload, Loader2
+} from 'lucide-react';
 import { getTTSProvider } from '../lib/tts/getTTSProvider';
 import type { AppSettings } from '../lib/types';
 import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { appDataDir, join } from '@tauri-apps/api/path';
+import { exists, mkdir } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
+import { audioManager } from '../lib/audioManager';
 
 interface SettingsPanelProps {
     settings: AppSettings;
@@ -26,7 +34,9 @@ function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings,
             <select
                 value={settings.ttsVoiceId || ''}
                 onChange={(e) => onUpdate({ ttsVoiceId: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-transparent rounded-lg text-sm
+          text-gray-900 dark:text-white focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
+                disabled={voices.length === 0}
             >
                 <option value="">Default System Voice</option>
                 {voices.map(v => (
@@ -39,6 +49,71 @@ function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings,
 
 
 export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: SettingsPanelProps) {
+    const [activeTab, setActiveTab] = useState<'general' | 'announcements'>('general');
+    const [testPlaying, setTestPlaying] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleSelectAlarm = async () => {
+        try {
+            const selectedPath = await openDialog({
+                multiple: false,
+                filters: [{ name: 'Audio File', extensions: ['mp3', 'wav', 'ogg'] }]
+            }) as string | null;
+
+            if (!selectedPath) return;
+
+            setIsUploading(true);
+
+            // Ensure app data dir exists for storing custom audio
+            const dataDir = await appDataDir();
+            const alarmsDir = await join(dataDir, 'alarms');
+            if (!(await exists(alarmsDir))) {
+                await mkdir(alarmsDir, { recursive: true });
+            }
+
+            // Copy file to AppData by delegating to Rust backend to bypass scope limits
+            // Extract the original filename
+            const originalFilename = selectedPath.split(/[/\\]/).pop() || 'custom_alarm.mp3';
+            // We append the timestamp to avoid collisions, but keep the original name visible
+            const sanitizedName = originalFilename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            const targetPath = await join(alarmsDir, `${Date.now()}_${sanitizedName}`);
+
+            await invoke('copy_alarm_file', { sourcePath: selectedPath, targetPath });
+
+            onUpdate({ customAlarmPath: targetPath });
+        } catch (error) {
+            console.error("Failed to select custom alarm:", error);
+            alert("Error saving custom alarm: " + String(error));
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleTestAlarm = () => {
+        if (testPlaying) {
+            audioManager.stop('test-alarm');
+            setTestPlaying(false);
+        } else {
+            audioManager.play('test-alarm', settings.customAlarmPath, settings.alarmVolume);
+            setTestPlaying(true);
+            setTimeout(() => {
+                audioManager.stop('test-alarm');
+                setTestPlaying(false);
+            }, 3000);
+        }
+    };
+
+    // Helper to extract a display-friendly filename from the custom path
+    const getAlarmDisplayFileName = () => {
+        if (!settings.customAlarmPath) return null;
+        // The path looks like .../alarms/1234567890_my_song.mp3
+        const parts = settings.customAlarmPath.split(/[/\\]/);
+        const fileName = parts[parts.length - 1];
+        // Strip out the timestamp prefix if it exists
+        const timestampMatch = fileName.match(/^\d+_(.+)$/);
+        return timestampMatch ? timestampMatch[1] : fileName;
+    };
+
     return (
         <div className="fixed inset-0 z-40 flex justify-end">
             {/* Backdrop */}
@@ -247,8 +322,62 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                 max={100}
                                 value={Math.round(settings.alarmVolume * 100)}
                                 onChange={(e) => onUpdate({ alarmVolume: Number(e.target.value) / 100 })}
-                                className="w-full accent-emerald-500"
+                                className="w-full accent-emerald-500 mb-6"
                             />
+                        </div>
+
+                        {/* Custom Alarm Source */}
+                        <div className="mb-2">
+                            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Alarm Sound File</label>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleSelectAlarm}
+                                    disabled={isUploading}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition disabled:opacity-50"
+                                >
+                                    {isUploading ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <Upload size={16} />
+                                    )}
+                                    <span className="truncate max-w-[140px]">
+                                        {isUploading
+                                            ? 'Uploading...'
+                                            : settings.customAlarmPath
+                                                ? getAlarmDisplayFileName()
+                                                : 'Upload MP3'}
+                                    </span>
+                                </button>
+
+                                <button
+                                    onClick={handleTestAlarm}
+                                    disabled={!settings.soundEnabled || isUploading}
+                                    className={`p-2 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors ${testPlaying
+                                        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                                        : 'bg-gray-100 dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-gray-700 hover:text-emerald-700 dark:hover:text-emerald-300'
+                                        } disabled:opacity-50`}
+                                    title="Test Alarm Sound"
+                                >
+                                    <Play size={16} className={testPlaying ? "animate-pulse" : ""} fill={testPlaying ? "currentColor" : "none"} />
+                                </button>
+
+                                {settings.customAlarmPath && (
+                                    <button
+                                        onClick={() => {
+                                            if (testPlaying) {
+                                                audioManager.stop('test-alarm');
+                                                setTestPlaying(false);
+                                            }
+                                            onUpdate({ customAlarmPath: null });
+                                        }}
+                                        disabled={isUploading}
+                                        className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                                        title="Reset to default system bell"
+                                    >
+                                        <RotateCcw size={16} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </section>
 

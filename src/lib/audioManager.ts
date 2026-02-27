@@ -1,4 +1,4 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { readFile } from '@tauri-apps/plugin-fs';
 
 const audioInstances = new Map<string, HTMLAudioElement>();
 
@@ -6,18 +6,41 @@ const audioInstances = new Map<string, HTMLAudioElement>();
 const bellUrl = new URL('../assets/bell.mp3', import.meta.url).href;
 
 export const audioManager = {
-    play(timerId: string, customPath: string | null, volume: number): void {
+    async play(timerId: string, customPath: string | null, volume: number): Promise<void> {
         if (audioInstances.has(timerId)) return;
-        const src = customPath
-            ? convertFileSrc(customPath)
-            : bellUrl;
+
+        let src = bellUrl;
+        let blobUrl: string | null = null;
+
+        if (customPath) {
+            try {
+                // Bypass Tauri's asset:// restrictions by loading bytes directly
+                const audioData = await readFile(customPath);
+                let mimeType = 'audio/mpeg';
+                const lower = customPath.toLowerCase();
+                if (lower.endsWith('.wav')) mimeType = 'audio/wav';
+                else if (lower.endsWith('.ogg')) mimeType = 'audio/ogg';
+
+                const blob = new Blob([audioData], { type: mimeType });
+                blobUrl = URL.createObjectURL(blob);
+                src = blobUrl;
+            } catch (err) {
+                console.error('Failed to read custom audio file directly:', err);
+            }
+        }
+
         const audio = new Audio(src);
         audio.loop = true;
         audio.volume = volume;
+
+        if (blobUrl) {
+            (audio as any)._blobUrl = blobUrl;
+        }
+
         audio.play().then(() => {
             audioInstances.set(timerId, audio);
         }).catch((err) => {
-            console.error('Audio play failed, using fallback synthesizer:', err);
+            console.error('Audio play failed for path:', src, 'with error:', err);
 
             // If the audio file (custom or default) fails (e.g. strict autoplay or asset missing),
             // play a continuous repeating synthetic alarm using our context.
@@ -67,6 +90,11 @@ export const audioManager = {
         if (!audio) return;
         audio.pause();
         audio.currentTime = 0;
+
+        if ((audio as any)._blobUrl) {
+            URL.revokeObjectURL((audio as any)._blobUrl);
+        }
+
         audioInstances.delete(timerId);
     },
 
@@ -74,6 +102,9 @@ export const audioManager = {
         audioInstances.forEach((a) => {
             a.pause();
             a.currentTime = 0;
+            if ((a as any)._blobUrl) {
+                URL.revokeObjectURL((a as any)._blobUrl);
+            }
         });
         audioInstances.clear();
     },

@@ -22,10 +22,7 @@ pub fn create_timer(
 }
 
 #[tauri::command]
-pub fn start_timer(
-    state: tauri::State<'_, AppState>,
-    id: String,
-) -> Result<TimerState, String> {
+pub fn start_timer(state: tauri::State<'_, AppState>, id: String) -> Result<TimerState, String> {
     let now = unix_now();
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     let timer = map.get_mut(&id).ok_or("Timer not found")?;
@@ -40,10 +37,7 @@ pub fn start_timer(
 }
 
 #[tauri::command]
-pub fn pause_timer(
-    state: tauri::State<'_, AppState>,
-    id: String,
-) -> Result<TimerState, String> {
+pub fn pause_timer(state: tauri::State<'_, AppState>, id: String) -> Result<TimerState, String> {
     let now = unix_now();
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     let timer = map.get_mut(&id).ok_or("Timer not found")?;
@@ -52,20 +46,14 @@ pub fn pause_timer(
         return Ok(timer.clone());
     }
 
-    timer.remaining_seconds = timer
-        .end_time_unix
-        .unwrap_or(now)
-        .saturating_sub(now);
+    timer.remaining_seconds = timer.end_time_unix.unwrap_or(now).saturating_sub(now);
     timer.end_time_unix = None;
     timer.status = TimerStatus::Paused;
     Ok(timer.clone())
 }
 
 #[tauri::command]
-pub fn reset_timer(
-    state: tauri::State<'_, AppState>,
-    id: String,
-) -> Result<TimerState, String> {
+pub fn reset_timer(state: tauri::State<'_, AppState>, id: String) -> Result<TimerState, String> {
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     let timer = map.get_mut(&id).ok_or("Timer not found")?;
 
@@ -76,10 +64,7 @@ pub fn reset_timer(
 }
 
 #[tauri::command]
-pub fn delete_timer(
-    state: tauri::State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub fn delete_timer(state: tauri::State<'_, AppState>, id: String) -> Result<(), String> {
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     map.remove(&id).ok_or("Timer not found")?;
     Ok(())
@@ -131,7 +116,7 @@ pub fn update_timer(
     if let Some(new_duration) = new_duration_seconds {
         // Calculate the difference between the new duration and the old duration
         let diff = new_duration as i64 - timer.duration_seconds as i64;
-        
+
         timer.duration_seconds = new_duration;
 
         // Apply difference to remaining_seconds and clamp to 0
@@ -162,17 +147,12 @@ pub fn update_timer(
 }
 
 #[tauri::command]
-pub fn pause_all_timers(
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
+pub fn pause_all_timers(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let now = unix_now();
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     for timer in map.values_mut() {
         if timer.status == TimerStatus::Running {
-            timer.remaining_seconds = timer
-                .end_time_unix
-                .unwrap_or(now)
-                .saturating_sub(now);
+            timer.remaining_seconds = timer.end_time_unix.unwrap_or(now).saturating_sub(now);
             timer.end_time_unix = None;
             timer.status = TimerStatus::Paused;
         }
@@ -181,9 +161,7 @@ pub fn pause_all_timers(
 }
 
 #[tauri::command]
-pub fn resume_all_timers(
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
+pub fn resume_all_timers(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let now = unix_now();
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     for timer in map.values_mut() {
@@ -196,13 +174,8 @@ pub fn resume_all_timers(
 }
 
 #[tauri::command]
-pub fn set_fullscreen(
-    window: tauri::Window,
-    fullscreen: bool,
-) -> Result<(), String> {
-    window
-        .set_fullscreen(fullscreen)
-        .map_err(|e| e.to_string())
+pub fn set_fullscreen(window: tauri::Window, fullscreen: bool) -> Result<(), String> {
+    window.set_fullscreen(fullscreen).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -226,5 +199,21 @@ pub fn sync_timers(
         }
         map.insert(timer.id.clone(), timer);
     }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn copy_alarm_file(source_path: String, target_path: String) -> Result<(), String> {
+    use std::fs;
+    use std::path::Path;
+
+    let target = Path::new(&target_path);
+    if let Some(parent) = target.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {}", e))?;
+        }
+    }
+
+    fs::copy(&source_path, &target_path).map_err(|e| format!("Failed to copy file: {}", e))?;
     Ok(())
 }

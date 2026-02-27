@@ -22,10 +22,7 @@ fn start_tick_loop(
                 if timer.status != TimerStatus::Running {
                     continue;
                 }
-                let remaining = timer
-                    .end_time_unix
-                    .unwrap_or(now)
-                    .saturating_sub(now);
+                let remaining = timer.end_time_unix.unwrap_or(now).saturating_sub(now);
                 timer.remaining_seconds = remaining;
                 if remaining == 0 {
                     timer.status = TimerStatus::Ended;
@@ -51,6 +48,7 @@ pub fn run() {
     let tick_timers = Arc::clone(&app_state.timers);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
@@ -66,6 +64,7 @@ pub fn run() {
             commands::set_fullscreen,
             commands::sync_timers,
             commands::update_timer,
+            commands::copy_alarm_file,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
