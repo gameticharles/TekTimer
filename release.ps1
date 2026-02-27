@@ -268,6 +268,7 @@ if (-not $SkipTests) {
         Write-Success "Type check passed"
 
         Write-Info "Rebuilding icons..."
+        Remove-Item -Path "src-tauri/icons" -Recurse -Force -ErrorAction SilentlyContinue
         npm run tauri icon public/icon.png
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMsg "Icon generation failed!"

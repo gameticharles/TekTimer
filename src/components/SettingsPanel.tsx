@@ -67,8 +67,8 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                 setUpdateMessage("You are up to date!");
             }
         } catch (error) {
-            console.error(error);
-            setUpdateMessage("Failed to check for updates.");
+            console.error("Updater error:", error);
+            setUpdateMessage(`Failed: ${String(error)}`);
         } finally {
             setIsCheckingUpdate(false);
         }
