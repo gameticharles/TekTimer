@@ -126,8 +126,9 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
                          transition-all duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0'}`}>
                     <button
                         onClick={handleExit}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white 
-                       hover:bg-white/10 transition-all text-sm"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-gray-900 
+                       hover:bg-gray-200 dark:text-gray-400 dark:hover:text-white 
+                       dark:hover:bg-white/10 transition-all text-sm"
                     >
                         <ArrowLeft size={16} />
                         Exit

@@ -1,4 +1,5 @@
 import { GraduationCap, ClipboardList, BookOpen, Settings } from 'lucide-react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { AppMode } from '../lib/types';
 import UpdateChecker from '../components/UpdateChecker';
 
@@ -10,7 +11,7 @@ interface HomeScreenProps {
 export default function HomeScreen({ onSelect, onSettings }: HomeScreenProps) {
     return (
         <div className="h-screen w-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center relative transition-colors">
-            
+
             {/* Top Window Drag Region */}
             <div data-tauri-drag-region className="absolute top-0 left-0 right-0 h-12 z-0" />
 
@@ -91,7 +92,7 @@ export default function HomeScreen({ onSelect, onSettings }: HomeScreenProps) {
             {/* Close/minimize buttons for borderless window */}
             <div className="absolute top-4 right-4 flex gap-2">
                 <button
-                    onClick={() => window.close()}
+                    onClick={() => getCurrentWindow().close()}
                     className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-400 transition-colors"
                     aria-label="Close"
                 />

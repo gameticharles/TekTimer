@@ -6,13 +6,13 @@ interface EmptyStateProps {
 
 export default function EmptyState({ onAddTimer }: EmptyStateProps) {
     return (
-        <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-950">
+        <div className="h-screen w-screen flex flex-col items-center justify-center">
             <div className="text-center">
-                <div className="w-20 h-20 rounded-2xl bg-gray-800/50 border border-gray-700/50 
+                <div className="w-20 h-20 rounded-2xl bg-gray-200/50 dark:bg-gray-800/50 border border-gray-300/50 dark:border-gray-700/50 
                         flex items-center justify-center mx-auto mb-6">
-                    <Plus size={32} className="text-gray-600" />
+                    <Plus size={32} className="text-gray-400 dark:text-gray-600" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-400 mb-2">No Exam Timers</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-400 mb-2">No Exam Timers</h2>
                 <p className="text-gray-500 mb-8 max-w-sm">
                     Add up to 5 exam timers for simultaneous multi-session management.
                 </p>
@@ -24,7 +24,7 @@ export default function EmptyState({ onAddTimer }: EmptyStateProps) {
                     <Plus size={18} />
                     Add Exam Timer
                 </button>
-                <p className="text-gray-600 text-xs mt-4">Press N to add a timer</p>
+                <p className="text-gray-500 dark:text-gray-600 text-xs mt-4">Press N to add a timer</p>
             </div>
         </div>
     );
