@@ -43,4 +43,45 @@ export const audioManager = {
         });
         audioInstances.clear();
     },
+
+    playBeep(remainingSeconds: number, volume: number): void {
+        // Standard Web Audio API for synthetic beeps
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        const ctx = new AudioContextClass();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 800; // 800Hz beep
+
+        // Map remaining seconds to beep duration
+        const durationMap: Record<number, number> = {
+            5: 0.15,
+            4: 0.2,
+            3: 0.4,
+            2: 0.6,
+            1: 0.8
+        };
+        const duration = durationMap[remainingSeconds];
+        if (!duration) return;
+
+        gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+        // Fade out slightly to avoid clicking
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + duration);
+
+        // Clean up context after beep
+        setTimeout(() => {
+            if (ctx.state !== 'closed') {
+                ctx.close().catch(console.error);
+            }
+        }, duration * 1000 + 100);
+    },
 };

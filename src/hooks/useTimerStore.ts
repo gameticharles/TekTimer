@@ -5,6 +5,7 @@ import { load } from '@tauri-apps/plugin-store';
 import type { AnyTimer, QuizTimer, ExamTimer, TimerTickPayload, AppSettings, TimerStatus } from '../lib/types';
 import { SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 import { announcementQueue, resolveTemplate, enhanceWithLLM } from '../lib/announcements';
+import { audioManager } from '../lib/audioManager';
 
 const TIMERS_STORE_PATH = 'timers.json';
 
@@ -65,6 +66,13 @@ export function useTimerStore(settings: AppSettings) {
                     };
 
                     const justEnded = t.status === 'Running' && payload.status === 'Ended';
+
+                    // 5-second countdown beeps
+                    if (settings.soundEnabled && payload.status === 'Running' && payload.remaining_seconds <= 5 && payload.remaining_seconds > 0) {
+                        if (t.remainingSeconds !== payload.remaining_seconds) {
+                            audioManager.playBeep(payload.remaining_seconds, settings.alarmVolume);
+                        }
+                    }
 
                     if (settings.announcementsEnabled && justEnded) {
                         const resolvedText = resolveTemplate(settings.endMessage, updated);
