@@ -24,6 +24,7 @@
     "fs:scope-appdata-recursive",
     "fs:allow-appdata-meta",
     "fs:allow-read",
-    "core:path:default"
+    "core:path:default",
+    "updater:default"
   ]
 }

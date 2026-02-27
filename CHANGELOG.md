@@ -1,3 +1,6 @@
+## [0.2.3] - 2026-02-27
+
+Fixed updater
 ## [0.2.2] - 2026-02-27
 
 Fixed icon
@@ -21,6 +24,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
