@@ -38,10 +38,10 @@ export default function ExamScreen({ settings, onExit, onSettings, groupId, stor
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
 
-    // Filter timers by groupId when viewing a specific hall
+    // Filter timers: only exam-mode timers, optionally filtered by groupId
     const examTimers = groupId
-        ? (store.timers.filter(t => t.groupId === groupId) as ExamTimer[])
-        : (store.timers as ExamTimer[]);
+        ? (store.timers.filter(t => t.groupId === groupId && t.mode === 'exam') as ExamTimer[])
+        : (store.timers.filter(t => t.mode === 'exam') as ExamTimer[]);
     const hasRunning = examTimers.some((t) => t.status === 'Running');
     const hasPaused = examTimers.some((t) => t.status === 'Paused');
 
@@ -83,17 +83,9 @@ export default function ExamScreen({ settings, onExit, onSettings, groupId, stor
         return () => window.removeEventListener('keydown', handler);
     }, [examTimers.length, store, exitFullscreen, toggleFullscreen]);
 
-    const handleExit = useCallback(async () => {
-        if (groupId) {
-            // Coming from proctor dashboard — just navigate back, don't clear timers
-            onExit();
-        } else {
-            // Standalone exam mode — clear everything
-            audioManager.stopAll();
-            await store.clearAll();
-            onExit();
-        }
-    }, [store, onExit, groupId]);
+    const handleExit = useCallback(() => {
+        onExit();
+    }, [onExit]);
 
     const handleAddTimer = useCallback(
         async (courseCode: string, courseTitle: string | undefined, program: string, studentCount: number, durationSeconds: number) => {

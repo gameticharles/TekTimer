@@ -145,17 +145,20 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
         return result;
     }, [groups, ungroupedGroup]);
 
-    // Derived Metrics
+    // Derived Metrics — count individual timers, not groups
     const metrics = useMemo(() => {
-        return {
-            running: allGroups.filter(g => g.status === 'RUNNING').length,
-            warning: allGroups.filter(g => g.status === 'WARNING').length,
-            ended: allGroups.filter(g => g.status === 'ENDED').length,
-            scheduled: allGroups.filter(g => g.status === 'SCHEDULED' || g.status === 'PAUSED').length,
-            avgProgress: allGroups.length > 0 ? allGroups.reduce((acc, g) => acc + g.progress, 0) / allGroups.length : 0,
-            totalStudents: allGroups.reduce((acc, g) => acc + g.timers.reduce((s, t) => s + (t.mode === 'exam' ? t.studentCount : 0), 0), 0)
-        };
-    }, [allGroups]);
+        const allTimers = allGroups.flatMap(g => g.timers);
+        const running = allTimers.filter(t => t.status === 'Running').length;
+        const warning = allTimers.filter(t => t.status === 'Running' && t.remainingSeconds <= settings.warningThresholdSeconds && t.remainingSeconds > 0).length;
+        const ended = allTimers.filter(t => t.status === 'Ended').length;
+        const idle = allTimers.filter(t => t.status === 'Idle' || t.status === 'Paused').length;
+        const totalTimers = allTimers.length;
+        const totalDuration = allTimers.reduce((acc, t) => acc + t.durationSeconds, 0);
+        const totalRemaining = allTimers.reduce((acc, t) => acc + t.remainingSeconds, 0);
+        const avgProgress = totalDuration > 0 ? ((totalDuration - totalRemaining) / totalDuration) * 100 : 0;
+        const totalStudents = allTimers.reduce((acc, t) => acc + (t.mode === 'exam' ? t.studentCount : 0), 0);
+        return { running, warning, ended, scheduled: idle, totalTimers, avgProgress, totalStudents };
+    }, [allGroups, settings.warningThresholdSeconds]);
 
     const filteredGroups = allGroups.filter(g =>
         g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -260,7 +263,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.running.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-emerald-500" style={{ width: `${(metrics.running / Math.max(1, allGroups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(metrics.running / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
 
@@ -272,7 +275,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.warning.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-amber-500" style={{ width: `${(metrics.warning / Math.max(1, allGroups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${(metrics.warning / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
 
@@ -284,7 +287,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.ended.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-red-500" style={{ width: `${(metrics.ended / Math.max(1, allGroups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${(metrics.ended / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
 
@@ -296,7 +299,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.scheduled.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-gray-400 dark:bg-gray-500" style={{ width: `${(metrics.scheduled / Math.max(1, allGroups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-gray-400 dark:bg-gray-500 transition-all duration-500" style={{ width: `${(metrics.scheduled / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
                     </div>
@@ -344,7 +347,19 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                     {/* Col 1: Lecture Hall Info & Global Actions */}
                                     <div className="col-span-1 pr-4">
                                         <button
-                                            onClick={() => group.id === '__standalone__' ? onOpenExam() : onOpenGroup(group.id)}
+                                            onClick={() => {
+                                                if (group.id === '__standalone__') {
+                                                    // If only quiz timers, open the first one in QuizScreen
+                                                    const quizTimers = group.timers.filter(t => t.mode === 'quiz');
+                                                    if (quizTimers.length > 0 && quizTimers.length === group.timers.length) {
+                                                        onOpenQuizTimer(quizTimers[0].id);
+                                                    } else {
+                                                        onOpenExam();
+                                                    }
+                                                } else {
+                                                    onOpenGroup(group.id);
+                                                }
+                                            }}
                                             className="text-left hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                             title="Open in Exam View"
                                         >
@@ -473,7 +488,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                     <div className="col-span-1 flex items-center justify-center gap-2">
                                                         <div className="w-full max-w-[80px] h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                                                             <div
-                                                                className={`h-full rounded-full ${timer.status === 'Running' && timer.remainingSeconds > 0 && timer.remainingSeconds <= settings.warningThresholdSeconds ? 'bg-amber-500' : timer.status === 'Ended' ? 'bg-red-500' : 'bg-blue-500'}`}
+                                                                className={`h-full rounded-full transition-all duration-500 ${timer.status === 'Running' && timer.remainingSeconds > 0 && timer.remainingSeconds <= settings.warningThresholdSeconds ? 'bg-amber-500' : timer.status === 'Ended' ? 'bg-red-500' : 'bg-blue-500'}`}
                                                                 style={{ width: `${timerProgress}%` }}
                                                             ></div>
                                                         </div>
