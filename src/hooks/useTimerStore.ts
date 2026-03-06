@@ -125,7 +125,7 @@ export function useTimerStore(settings: AppSettings) {
     // ── Create Timer ──────────────────────────────────────────────────
 
     const createQuizTimer = useCallback(
-        async (label: string, durationSeconds: number, startImmediately: boolean) => {
+        async (label: string, durationSeconds: number, startImmediately: boolean, groupId?: string) => {
             const result = await invoke<{ id: string }>('create_timer', {
                 durationSeconds,
                 label,
@@ -133,6 +133,7 @@ export function useTimerStore(settings: AppSettings) {
 
             const timer: QuizTimer = {
                 id: result.id,
+                groupId,
                 label,
                 durationSeconds,
                 remainingSeconds: durationSeconds,
@@ -144,7 +145,7 @@ export function useTimerStore(settings: AppSettings) {
                 announcementSchedule: settings.defaultAnnouncementSchedule.map(a => ({ ...a, id: `${a.id}-${Date.now()}` })),
             };
 
-            setTimers([timer]);
+            setTimers((prev) => [...prev, timer]);
 
             if (startImmediately) {
                 await invoke('start_timer', { id: result.id });
@@ -167,6 +168,7 @@ export function useTimerStore(settings: AppSettings) {
             program: string,
             studentCount: number,
             durationSeconds: number,
+            groupId?: string
         ) => {
             const label = [courseCode, courseTitle, program].filter(Boolean).join(' · ');
             const result = await invoke<{ id: string }>('create_timer', {
@@ -176,6 +178,7 @@ export function useTimerStore(settings: AppSettings) {
 
             const timer: ExamTimer = {
                 id: result.id,
+                groupId,
                 label,
                 durationSeconds,
                 remainingSeconds: durationSeconds,
@@ -266,6 +269,43 @@ export function useTimerStore(settings: AppSettings) {
         },
         []
     );
+
+    const createGroupFromPreset = useCallback(async (preset: import('../lib/types').TimerPreset, startImmediately: boolean = false) => {
+        const groupId = `group-${Date.now()}`;
+        const newTimers: import('../lib/types').AnyTimer[] = [];
+
+        for (const pt of preset.timers) {
+            const result = await invoke<{ id: string }>('create_timer', {
+                durationSeconds: pt.durationSeconds,
+                label: pt.label,
+            });
+
+            newTimers.push({
+                ...pt,
+                id: result.id,
+                groupId,
+                groupSession: preset.session,
+                groupStartTime: preset.scheduledStartTime,
+                groupRemark: preset.remark,
+                status: 'Idle',
+                remainingSeconds: pt.durationSeconds,
+                endTimeUnix: null,
+                isDismissed: false,
+                hasBeenSpoken: false
+            } as any);
+        }
+
+        setTimers((prev) => [...prev, ...newTimers]);
+
+        if (startImmediately) {
+            for (const nt of newTimers) {
+                await invoke('start_timer', { id: nt.id });
+            }
+            setTimers(prev => prev.map(t => newTimers.find(nt => nt.id === t.id) ? { ...t, status: 'Running' } : t));
+        }
+
+        return groupId;
+    }, []);
 
     // ── Timer Actions ─────────────────────────────────────────────────
 
@@ -366,6 +406,59 @@ export function useTimerStore(settings: AppSettings) {
         );
     }, []);
 
+    // ── Group Actions ─────────────────────────────────────────────────
+
+    const startGroup = useCallback(async (groupId: string) => {
+        const groupTimers = timers.filter(t => t.groupId === groupId && t.status !== 'Running' && t.status !== 'Ended');
+        for (const t of groupTimers) {
+            await invoke('start_timer', { id: t.id });
+        }
+        setTimers((prev) =>
+            prev.map((t) => (t.groupId === groupId && t.status !== 'Running' && t.status !== 'Ended' ? { ...t, status: 'Running' as const } : t)),
+        );
+    }, [timers]);
+
+    const pauseGroup = useCallback(async (groupId: string) => {
+        const groupTimers = timers.filter(t => t.groupId === groupId && t.status === 'Running');
+        for (const t of groupTimers) {
+            const result = await invoke<{ remaining_seconds: number }>('pause_timer', { id: t.id });
+            setTimers((prev) =>
+                prev.map((pt) =>
+                    pt.id === t.id
+                        ? { ...pt, status: 'Paused' as const, remainingSeconds: result.remaining_seconds }
+                        : pt,
+                ),
+            );
+        }
+    }, [timers]);
+
+    const addExtraTimeGroup = useCallback(async (groupId: string, extraSeconds: number) => {
+        const groupTimers = timers.filter(t => t.groupId === groupId);
+        for (const t of groupTimers) {
+            await invoke('add_extra_time', { id: t.id, extraSeconds });
+        }
+        setTimers((prev) =>
+            prev.map((t) => {
+                if (t.groupId !== groupId) return t;
+                return {
+                    ...t,
+                    durationSeconds: t.durationSeconds + extraSeconds,
+                    remainingSeconds: t.remainingSeconds + extraSeconds,
+                    status: t.status === 'Ended' ? ('Running' as const) : t.status,
+                    isDismissed: false,
+                };
+            }),
+        );
+    }, [timers]);
+
+    const removeGroup = useCallback(async (groupId: string) => {
+        const groupTimers = timers.filter(t => t.groupId === groupId);
+        for (const t of groupTimers) {
+            await invoke('delete_timer', { id: t.id });
+        }
+        setTimers((prev) => prev.filter(t => t.groupId !== groupId));
+    }, [timers]);
+
     // ── Announcements ─────────────────────────────────────────────────
 
     const updateAnnouncementSchedule = useCallback((id: string, schedule: typeof settings.defaultAnnouncementSchedule) => {
@@ -415,6 +508,7 @@ export function useTimerStore(settings: AppSettings) {
         createExamTimer,
         updateExamTimer,
         updateQuizTimer,
+        createGroupFromPreset,
         startTimer,
         pauseTimer,
         resetTimer,
@@ -424,9 +518,15 @@ export function useTimerStore(settings: AppSettings) {
         addExtraTime,
         pauseAll,
         resumeAll,
+        startGroup,
+        pauseGroup,
+        addExtraTimeGroup,
+        removeGroup,
         setFontSizeOverride,
         adjustFontSize,
         clearAll,
         updateAnnouncementSchedule,
     };
 }
+
+export type TimerStore = ReturnType<typeof useTimerStore>;

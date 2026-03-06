@@ -6,10 +6,10 @@ import BlackoutScreen from '../components/BlackoutScreen';
 import AnnouncementModal from '../components/AnnouncementModal';
 import EditQuizTimerModal from '../components/EditQuizTimerModal';
 import type { AppSettings, QuizTimer } from '../lib/types';
+import type { TimerStore } from '../hooks/useTimerStore';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useIdleControls } from '../hooks/useIdleControls';
 import { useBlackout } from '../hooks/useBlackout';
-import { useTimerStore } from '../hooks/useTimerStore';
 import { audioManager } from '../lib/audioManager';
 import { SCALE_STEP } from '../lib/fontSizeUtils';
 
@@ -18,16 +18,16 @@ interface QuizScreenProps {
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onExit: () => void;
     onSettings: () => void;
+    store: TimerStore;
 }
 
-export default function QuizScreen({ settings, onUpdateSettings, onExit, onSettings }: QuizScreenProps) {
+export default function QuizScreen({ settings, onUpdateSettings, onExit, onSettings, store }: QuizScreenProps) {
     const [showSetup, setShowSetup] = useState(true);
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { controlsVisible } = useIdleControls();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
-    const store = useTimerStore(settings);
 
     const timer = store.timers[0] as QuizTimer | undefined;
 

@@ -1,4 +1,4 @@
-import { GraduationCap, ClipboardList, BookOpen, Settings } from 'lucide-react';
+import { GraduationCap, ClipboardList, BookOpen, Settings, LayoutDashboard } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { AppMode } from '../lib/types';
 import UpdateChecker from '../components/UpdateChecker';
@@ -29,7 +29,7 @@ export default function HomeScreen({ onSelect, onSettings }: HomeScreenProps) {
             </div>
 
             {/* Mode Cards */}
-            <div className="flex gap-8">
+            <div className="flex flex-wrap justify-center gap-6 px-12 max-w-7xl mx-auto">
                 {/* Quiz Mode */}
                 <button
                     onClick={() => onSelect('quiz')}
@@ -71,6 +71,28 @@ export default function HomeScreen({ onSelect, onSettings }: HomeScreenProps) {
                     </p>
                     <div className="mt-6 text-blue-400 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
                         Click to start →
+                    </div>
+                </button>
+
+                {/* Proctor Mode */}
+                <button
+                    onClick={() => onSelect('proctor')}
+                    className="group relative w-80 p-8 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/70 
+                     hover:border-emerald-500/60 dark:hover:bg-gray-900 
+                     transition-all duration-300 cursor-pointer text-left
+                     shadow-sm dark:shadow-none hover:shadow-[0_0_40px_rgba(16,185,129,0.15)]"
+                >
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20 transition-colors">
+                            <LayoutDashboard size={28} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Proctor Mode</h2>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Multi-hall administrator dashboard. Monitor multiple exam centers simultaneously.
+                    </p>
+                    <div className="mt-6 text-emerald-500 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                        Go to dashboard →
                     </div>
                 </button>
             </div>

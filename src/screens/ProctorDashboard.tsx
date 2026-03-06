@@ -1,0 +1,611 @@
+import { useState, useMemo, useEffect } from 'react';
+import { Play, Pause, Settings, ChevronLeft, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2 } from 'lucide-react';
+import type { AppSettings, AnyTimer, TimerPreset } from '../lib/types';
+import type { TimerStore } from '../hooks/useTimerStore';
+import { useProctorStore } from '../hooks/useProctorStore';
+import PresetManager from '../components/PresetManager';
+
+interface Props {
+    settings: AppSettings;
+    onUpdateSettings: (patch: Partial<AppSettings>) => void;
+    onExit: () => void;
+    onSettings: () => void;
+    onOpenGroup: (groupId: string) => void;
+    store: TimerStore;
+}
+
+export default function ProctorDashboard({ settings, onUpdateSettings, onExit, onSettings, onOpenGroup, store }: Props) {
+    const { timers, createGroupFromPreset, startGroup, pauseGroup, addExtraTimeGroup, removeGroup, startTimer, pauseTimer, resetTimer, addExtraTime, deleteTimer } = store;
+    const { logs, addLog } = useProctorStore();
+
+    const [showPresets, setShowPresets] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showPresetSelection, setShowPresetSelection] = useState(false);
+
+
+    const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        if (!activeDropdownId) return;
+        const hc = () => setActiveDropdownId(null);
+        window.addEventListener('click', hc);
+        return () => window.removeEventListener('click', hc);
+    }, [activeDropdownId]);
+
+    // Group timers by groupId
+    const groups = useMemo(() => {
+        const map = new Map<string, AnyTimer[]>();
+        timers.forEach(t => {
+            if (t.groupId) {
+                if (!map.has(t.groupId)) map.set(t.groupId, []);
+                map.get(t.groupId)!.push(t);
+            }
+        });
+
+        // We also need the group names from presets... Wait, we didn't store group names in the timer objects.
+        // Let's resolve the group name by looking at the first timer's groupId, but where is the name?
+        // Let's map groupId -> Hall Name. If we lost the name, we can just use "Hall" or maybe we need to store the name.
+        // Actually, we can just infer the name, or for now, say "Active Hall".
+
+        const activeGroups: {
+            id: string,
+            name: string,
+            session?: string,
+            scheduledStartTime?: string,
+            remark?: string,
+            timers: AnyTimer[],
+            status: string,
+            progress: number,
+            mainTimer: AnyTimer | null
+        }[] = [];
+
+        map.forEach((groupTimers, groupId) => {
+            // Determine combined status
+            const running = groupTimers.filter(t => t.status === 'Running').length;
+            const paused = groupTimers.filter(t => t.status === 'Paused').length;
+            const ended = groupTimers.filter(t => t.status === 'Ended').length;
+
+            let status = 'SCHEDULED';
+            if (running > 0) status = 'RUNNING';
+            else if (ended === groupTimers.length) status = 'ENDED';
+            else if (paused > 0) status = 'PAUSED';
+
+            // Check warning
+            const inWarning = groupTimers.some(t => t.remainingSeconds <= settings.warningThresholdSeconds && t.remainingSeconds > 0 && t.status !== 'Ended');
+            if (running > 0 && inWarning) status = 'WARNING';
+
+            // Progress
+            const totalDuration = groupTimers.reduce((acc, t) => acc + t.durationSeconds, 0);
+            const totalRemaining = groupTimers.reduce((acc, t) => acc + t.remainingSeconds, 0);
+            const progress = totalDuration > 0 ? ((totalDuration - totalRemaining) / totalDuration) * 100 : 0;
+
+            const mainTimer = groupTimers.find(t => t.mode === 'exam') || groupTimers[0];
+
+            activeGroups.push({
+                id: groupId,
+                name: `Hall ${groupId.split('-')[1]?.substring(0, 4) || ''}`, // Fallback name
+                session: mainTimer?.groupSession,
+                scheduledStartTime: mainTimer?.groupStartTime,
+                remark: mainTimer?.groupRemark,
+                timers: groupTimers,
+                status,
+                progress,
+                mainTimer
+            });
+        });
+
+        // Naturally sort by Scheduled Start Time first, then fallback to ID
+        return activeGroups.sort((a, b) => {
+            if (a.scheduledStartTime && b.scheduledStartTime) {
+                return a.scheduledStartTime.localeCompare(b.scheduledStartTime);
+            }
+            if (a.scheduledStartTime) return -1;
+            if (b.scheduledStartTime) return 1;
+            return b.id.localeCompare(a.id);
+        });
+    }, [timers, settings.warningThresholdSeconds]);
+
+    // Derived Metrics
+    const metrics = useMemo(() => {
+        return {
+            running: groups.filter(g => g.status === 'RUNNING').length,
+            warning: groups.filter(g => g.status === 'WARNING').length,
+            ended: groups.filter(g => g.status === 'ENDED').length,
+            scheduled: groups.filter(g => g.status === 'SCHEDULED' || g.status === 'PAUSED').length,
+            avgProgress: groups.length > 0 ? groups.reduce((acc, g) => acc + g.progress, 0) / groups.length : 0,
+            totalStudents: groups.reduce((acc, g) => acc + g.timers.reduce((s, t) => s + (t.mode === 'exam' ? t.studentCount : 0), 0), 0)
+        };
+    }, [groups]);
+
+    const filteredGroups = groups.filter(g =>
+        g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        g.timers.some(t => t.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const handleStartPreset = async (preset: TimerPreset) => {
+        const groupId = await createGroupFromPreset(preset, false);
+        // We can optionally store the name somewhere, but right now we derive it or we can just log it
+        addLog('SYSTEM', `Administrator loaded preset ${preset.name}`, undefined, groupId);
+        setShowPresetSelection(false);
+    };
+
+    const formatTime = (seconds: number) => {
+        if (seconds <= 0) return '00:00:00';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const StatusBadge = ({ status }: { status: string }) => {
+        const config: Record<string, string> = {
+            'RUNNING': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+            'WARNING': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+            'ENDED': 'bg-red-500/10 text-red-500 border-red-500/20',
+            'SCHEDULED': 'bg-gray-500/10 text-gray-500 border-gray-500/20',
+            'PAUSED': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+        };
+        const colorClass = config[status] || config['SCHEDULED'];
+
+        return (
+            <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${colorClass}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                {status}
+            </div>
+        );
+    };
+
+    return (
+        <div className="h-screen w-screen bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white flex flex-col font-sans overflow-hidden transition-colors">
+            {/* Top Navigation Bar */}
+            <div className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] flex items-center justify-between px-6 shrink-0 transition-colors">
+                <div className="flex items-center gap-4">
+                    <button onClick={onExit} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                            <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center">
+                                <span className="text-[10px] grid grid-cols-2 gap-px p-px w-full h-full">
+                                    <div className="bg-white rounded-sm"></div><div className="bg-white/50 rounded-sm"></div>
+                                    <div className="bg-white/50 rounded-sm"></div><div className="bg-white rounded-sm"></div>
+                                </span>
+                            </div>
+                            Proctor Dashboard
+                        </h1>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold tracking-widest uppercase">Multi-Hall Administrator View</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-8">
+                    <div className="text-right flex flex-col items-center">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Avg. Progress</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{metrics.avgProgress.toFixed(1)}%</span>
+                    </div>
+                    <div className="text-right flex flex-col items-center">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Active Exams</span>
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">{groups.length} Halls</span>
+                    </div>
+                    <div className="text-right flex flex-col items-center">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Total Students</span>
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">{metrics.totalStudents.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 border-l border-gray-200 dark:border-gray-700 pl-6 ml-2">
+                        <button onClick={() => setShowPresets(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Manage Presets">
+                            <FolderPlus size={20} />
+                        </button>
+                        <button onClick={onSettings} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                            <Settings size={20} />
+                        </button>
+                        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-blue-500/20">
+                            Generate Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+
+                    {/* Metrics Top Row */}
+                    <div className="grid grid-cols-4 gap-4 mb-6 shrink-0">
+                        {/* Running */}
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Running</span>
+                                <CheckCircle2 size={16} className="text-emerald-500" />
+                            </div>
+                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.running.toString().padStart(2, '0')}</div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                                <div className="h-full bg-emerald-500" style={{ width: `${(metrics.running / Math.max(1, groups.length)) * 100}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* Warning */}
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Warning</span>
+                                <AlertTriangle size={16} className="text-amber-500" />
+                            </div>
+                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.warning.toString().padStart(2, '0')}</div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                                <div className="h-full bg-amber-500" style={{ width: `${(metrics.warning / Math.max(1, groups.length)) * 100}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* Ended */}
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Ended</span>
+                                <XCircle size={16} className="text-red-500" />
+                            </div>
+                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.ended.toString().padStart(2, '0')}</div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                                <div className="h-full bg-red-500" style={{ width: `${(metrics.ended / Math.max(1, groups.length)) * 100}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* Scheduled */}
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Scheduled</span>
+                                <Clock size={16} className="text-gray-400" />
+                            </div>
+                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.scheduled.toString().padStart(2, '0')}</div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                                <div className="h-full bg-gray-400 dark:bg-gray-500" style={{ width: `${(metrics.scheduled / Math.max(1, groups.length)) * 100}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Active Hall Monitoring List */}
+                    <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl flex-1 flex flex-col min-h-0 shadow-sm dark:shadow-none transition-colors">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
+                            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Active Hall Monitoring</h2>
+
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                                    <input
+                                        type="text"
+                                        placeholder="Filter halls..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-gray-700 rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-blue-500 transition-colors w-64 text-gray-900 dark:text-gray-100"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => setShowPresetSelection(true)}
+                                    className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    + Launch Hall
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Table Header */}
+                        <div className="grid grid-cols-6 px-6 py-3 border-b border-gray-200 dark:border-gray-800 text-[10px] font-bold text-gray-500 tracking-wider uppercase shrink-0">
+                            <div className="col-span-1">Lecture Hall / ID</div>
+                            <div className="col-span-1">Active Course</div>
+                            <div className="col-span-1 text-center">Status</div>
+                            <div className="col-span-1 text-center">Timer</div>
+                            <div className="col-span-1 text-center">Progress</div>
+                            <div className="col-span-1 text-right">Actions</div>
+                        </div>
+
+                        {/* Table Body */}
+                        <div className="flex-1 overflow-y-auto">
+                            {filteredGroups.map(group => (
+                                <div key={group.id} className="grid grid-cols-6 px-6 py-4 border-b border-gray-100 dark:border-gray-800/50 transition-colors group items-start gap-y-4">
+
+                                    {/* Col 1: Lecture Hall Info & Global Actions */}
+                                    <div className="col-span-1 pr-4">
+                                        <button
+                                            onClick={() => onOpenGroup(group.id)}
+                                            className="text-left hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                            title="Open in Exam View"
+                                        >
+                                            <div className="font-bold text-sm text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{group.name} <span className="text-[9px] text-gray-400 group-hover:text-blue-400 font-normal">→ Open</span></div>
+                                        </button>
+                                        <div className="text-[10px] text-gray-500 mt-0.5">
+                                            {group.session ? <span className="text-emerald-600 dark:text-emerald-500 font-semibold">{group.session} • </span> : null}
+                                            {group.scheduledStartTime ? <span className="font-mono text-gray-700 dark:text-gray-400">{group.scheduledStartTime} • </span> : null}
+                                            {group.timers.length} Timers
+                                        </div>
+                                        {group.remark && (
+                                            <div title={group.remark} className="text-[10px] text-gray-400 mt-1 mb-2 truncate max-w-[150px] italic">
+                                                ★ {group.remark}
+                                            </div>
+                                        )}
+
+                                        {/* Group actions underneath name */}
+                                        <div className="mt-3 flex items-center gap-1">
+                                            {group.status === 'SCHEDULED' || group.status === 'PAUSED' ? (
+                                                <button onClick={() => { startGroup(group.id); addLog('SYSTEM', `Started Hall: ${group.name}`, undefined, group.id); }} className="px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded text-[10px] font-bold uppercase transition-colors" title="Start All">
+                                                    Start All
+                                                </button>
+                                            ) : (group.status === 'RUNNING' || group.status === 'WARNING') && (
+                                                <button onClick={() => { pauseGroup(group.id); addLog('SYSTEM', `Paused Hall: ${group.name}`, undefined, group.id); }} className="px-2 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded text-[10px] font-bold uppercase transition-colors" title="Pause All">
+                                                    Pause All
+                                                </button>
+                                            )}
+
+                                            <div className="relative">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveDropdownId(activeDropdownId === group.id ? null : group.id);
+                                                    }}
+                                                    className="p-1 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded transition-colors"
+                                                >
+                                                    <MoreVertical size={14} />
+                                                </button>
+                                                {/* Dropdown Menu */}
+                                                {activeDropdownId === group.id && (
+                                                    <div className="absolute left-0 top-8 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
+                                                        {(group.status === 'SCHEDULED' || group.status === 'PAUSED') && (
+                                                            <button onClick={() => { startGroup(group.id); setActiveDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2">
+                                                                <Play size={14} className="text-emerald-500" /> Start All Timers
+                                                            </button>
+                                                        )}
+                                                        {(group.status === 'RUNNING' || group.status === 'WARNING') && (
+                                                            <button onClick={() => { pauseGroup(group.id); setActiveDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2">
+                                                                <Pause size={14} className="text-amber-500" /> Pause All Timers
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => { addExtraTimeGroup(group.id, 300); setActiveDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2">
+                                                            <Clock size={14} className="text-blue-500" /> Add 5 Minutes
+                                                        </button>
+                                                        <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
+                                                        <button onClick={() => {
+                                                            if (confirm(`Are you sure you want to remove ${group.name}?`)) {
+                                                                removeGroup(group.id);
+                                                                setActiveDropdownId(null);
+                                                            }
+                                                        }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 font-medium">
+                                                            <Trash2 size={14} /> Remove Hall
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Col 2-6: Timers Container */}
+                                    <div className="col-span-5 flex flex-col gap-3">
+                                        {group.timers.map((timer, index) => {
+                                            const rawProgress = timer.durationSeconds > 0 ? ((timer.durationSeconds - timer.remainingSeconds) / timer.durationSeconds) * 100 : 0;
+                                            const timerProgress = Math.min(100, Math.max(0, rawProgress));
+
+                                            return (
+                                                <div key={timer.id} className={`grid grid-cols-5 items-center gap-x-2 ${index !== group.timers.length - 1 ? 'border-b border-gray-100 dark:border-gray-800/30 pb-3' : ''}`}>
+
+                                                    {/* Course Info */}
+                                                    <div className="col-span-1">
+                                                        <div className="font-bold text-xs text-gray-700 dark:text-gray-200">
+                                                            {timer.mode === 'exam' ? timer.courseCode : timer.label}
+                                                        </div>
+                                                        <div className="text-[10px] text-gray-500 mt-0.5 truncate">
+                                                            {timer.mode === 'exam'
+                                                                ? `${timer.studentCount} Students • ${timer.program}`
+                                                                : 'General Timer'}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Status Badge */}
+                                                    <div className="col-span-1 flex justify-center">
+                                                        {timer.status === 'Idle' ? (
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-wider">
+                                                                IDLE
+                                                            </span>
+                                                        ) : timer.status === 'Ended' ? (
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 uppercase tracking-wider">
+                                                                ENDED
+                                                            </span>
+                                                        ) : (
+                                                            <StatusBadge status={timer.status === 'Running' && timer.remainingSeconds > 0 && timer.remainingSeconds <= settings.warningThresholdSeconds ? 'WARNING' : timer.status.toUpperCase() as any} />
+                                                        )}
+                                                    </div>
+
+                                                    {/* Timer */}
+                                                    <div className="col-span-1 text-center">
+                                                        <div className={`font-mono font-bold text-lg tracking-wider ${timer.status === 'Running' && timer.remainingSeconds > 0 && timer.remainingSeconds <= settings.warningThresholdSeconds ? 'text-amber-500' : timer.status === 'Ended' ? 'text-red-500' : 'text-gray-900 dark:text-gray-100'}`}>
+                                                            {formatTime(timer.remainingSeconds)}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Progress */}
+                                                    <div className="col-span-1 flex items-center justify-center gap-2">
+                                                        <div className="w-full max-w-[80px] h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${timer.status === 'Running' && timer.remainingSeconds > 0 && timer.remainingSeconds <= settings.warningThresholdSeconds ? 'bg-amber-500' : timer.status === 'Ended' ? 'bg-red-500' : 'bg-blue-500'}`}
+                                                                style={{ width: `${timerProgress}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold w-6 text-right">{Math.round(timerProgress)}%</span>
+                                                    </div>
+
+                                                    {/* Individual Timer Actions */}
+                                                    <div className="col-span-1 flex justify-end gap-1 relative">
+                                                        {timer.status === 'Idle' || timer.status === 'Paused' ? (
+                                                            <button onClick={() => { startTimer(timer.id); addLog('SYSTEM', `Started Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 rounded transition-colors" title="Start">
+                                                                <Play size={14} />
+                                                            </button>
+                                                        ) : timer.status === 'Running' ? (
+                                                            <button onClick={() => { pauseTimer(timer.id); addLog('SYSTEM', `Paused Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 rounded transition-colors" title="Pause">
+                                                                <Pause size={14} />
+                                                            </button>
+                                                        ) : null}
+
+                                                        <button
+                                                            onClick={() => { resetTimer(timer.id); addLog('SYSTEM', `Reset Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); }}
+                                                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 rounded transition-colors" title="Reset">
+                                                            <RotateCcw size={14} />
+                                                        </button>
+
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setActiveDropdownId(activeDropdownId === timer.id ? null : timer.id);
+                                                            }}
+                                                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded transition-colors">
+                                                            <MoreVertical size={14} />
+                                                        </button>
+
+                                                        {/* Timer Dropdown Menu */}
+                                                        {activeDropdownId === timer.id && (
+                                                            <div className="absolute right-0 top-8 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
+                                                                <button onClick={() => { addExtraTime(timer.id, 300); addLog('SYSTEM', `Added 5m to Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); setActiveDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2">
+                                                                    <Clock size={14} className="text-blue-500" /> Add 5 Minutes
+                                                                </button>
+                                                                <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
+                                                                <button onClick={() => {
+                                                                    if (confirm(`Are you sure you want to delete this timer?`)) {
+                                                                        deleteTimer(timer.id);
+                                                                        addLog('SYSTEM', `Deleted Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id);
+                                                                        setActiveDropdownId(null);
+                                                                    }
+                                                                }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 font-medium">
+                                                                    <Trash2 size={14} /> Delete Timer
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredGroups.length === 0 && (
+                                <div className="p-12 text-center text-gray-400 dark:text-gray-500 flex flex-col items-center">
+                                    <Search size={32} className="mb-4 opacity-50" />
+                                    <p className="text-sm">No active halls match your filter.</p>
+                                    <button onClick={() => setShowPresetSelection(true)} className="mt-4 text-blue-500 dark:text-blue-400 hover:underline text-sm font-medium">
+                                        Launch a new Hall Preset
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Sidebar - Exam Log / Audit Trail */}
+                <div className="w-80 bg-white dark:bg-[#1F2937] border-l border-gray-200 dark:border-gray-800 flex flex-col shrink-0 transition-colors">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span>Exam Log</span>
+                            <span className="px-1.5 py-0.5 rounded text-[8px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold border border-gray-200 dark:border-gray-700">Real-Time</span>
+                        </h3>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 relative">
+                        {/* Timeline line */}
+                        <div className="absolute left-6 top-4 bottom-4 w-px bg-gray-200 dark:bg-gray-800"></div>
+
+                        <div className="space-y-6 relative">
+                            {logs.map((log) => {
+                                const renderDot = () => {
+                                    if (log.type === 'STARTED') return <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'ENDED') return <div className="w-2.5 h-2.5 rounded-full bg-red-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'WARNING') return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'SYSTEM') return <div className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    return <div className="w-2.5 h-2.5 rounded-full bg-gray-400 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                };
+
+                                return (
+                                    <div key={log.id} className="flex gap-4 group">
+                                        <div className="pt-1">{renderDot()}</div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-[10px] text-gray-500 font-mono">
+                                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <span className={`text-[9px] font-bold uppercase tracking-widest ${log.type === 'STARTED' ? 'text-emerald-600 dark:text-emerald-500/70' :
+                                                    log.type === 'WARNING' ? 'text-amber-600 dark:text-amber-500/70' :
+                                                        log.type === 'ENDED' ? 'text-red-600 dark:text-red-500/70' :
+                                                            'text-gray-500 dark:text-gray-500/70'
+                                                    }`}>
+                                                    {log.type}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                                                {log.message}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Dummy Log if Empty */}
+                            {logs.length === 0 && (
+                                <div className="flex gap-4 opacity-50">
+                                    <div className="pt-1"><div className="w-2.5 h-2.5 rounded-full bg-gray-400 dark:bg-gray-600 ring-4 ring-white dark:ring-[#1F2937] shrink-0" /></div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[10px] text-gray-500 font-mono">System</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            Awaiting logs. Exam events will appear here.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Presets Modal */}
+            {
+                showPresets && (
+                    <PresetManager
+                        settings={settings}
+                        onUpdate={onUpdateSettings}
+                        onClose={() => setShowPresets(false)}
+                    />
+                )
+            }
+
+            {/* Sub-modal: Launch Preset Selection */}
+            {
+                showPresetSelection && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-xl w-[400px] shadow-2xl p-6 transition-colors">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Launch Hall Preset</h3>
+                                <button onClick={() => setShowPresetSelection(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                                    <XCircle size={20} />
+                                </button>
+                            </div>
+                            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+                                {settings.savedPresets?.length > 0 ? settings.savedPresets.map(preset => (
+                                    <button
+                                        key={preset.id}
+                                        onClick={() => handleStartPreset(preset)}
+                                        className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                                    >
+                                        <div className="font-bold text-sm text-gray-900 dark:text-gray-200">{preset.name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 pb-1">
+                                            {preset.session ? `${preset.session} • ` : null}
+                                            {preset.scheduledStartTime ? `${preset.scheduledStartTime} • ` : null}
+                                            {preset.timers.length} timers configured
+                                        </div>
+                                        {preset.remark && <div className="text-[10px] text-gray-400 italic truncate max-w-[300px] mt-1">★ {preset.remark}</div>}
+                                    </button>
+                                )) : (
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                                        No presets created yet. Click "Manage Presets" in the top right to create one.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
+    );
+}

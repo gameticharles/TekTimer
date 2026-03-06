@@ -2,16 +2,20 @@ import { useState, useEffect } from 'react';
 import HomeScreen from './screens/HomeScreen';
 import QuizScreen from './screens/QuizScreen';
 import ExamScreen from './screens/ExamScreen';
+import ProctorDashboard from './screens/ProctorDashboard';
 import SettingsPanel from './components/SettingsPanel';
 import AnnouncementStatusBar from './components/AnnouncementStatusBar';
 import AnnouncementToast from './components/AnnouncementToast';
 import { useSettings } from './hooks/useSettings';
+import { useTimerStore } from './hooks/useTimerStore';
 import type { AppMode } from './lib/types';
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>('home');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const { settings, updateSettings, resetSettings, loaded } = useSettings();
+  const store = useTimerStore(settings);
 
   useEffect(() => {
     if (!loaded) return;
@@ -66,6 +70,7 @@ export default function App() {
         <QuizScreen
           settings={settings}
           onUpdateSettings={updateSettings}
+          store={store}
           onExit={() => setMode('home')}
           onSettings={() => setSettingsOpen(true)}
         />
@@ -75,8 +80,31 @@ export default function App() {
         <ExamScreen
           settings={settings}
           onUpdateSettings={updateSettings}
+          store={store}
+          groupId={activeGroupId ?? undefined}
+          onExit={() => {
+            if (activeGroupId) {
+              setActiveGroupId(null);
+              setMode('proctor');
+            } else {
+              setMode('home');
+            }
+          }}
+          onSettings={() => setSettingsOpen(true)}
+        />
+      )}
+
+      {mode === 'proctor' && (
+        <ProctorDashboard
+          settings={settings}
+          onUpdateSettings={updateSettings}
+          store={store}
           onExit={() => setMode('home')}
           onSettings={() => setSettingsOpen(true)}
+          onOpenGroup={(groupId) => {
+            setActiveGroupId(groupId);
+            setMode('exam');
+          }}
         />
       )}
 

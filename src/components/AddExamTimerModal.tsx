@@ -27,7 +27,7 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount }: AddExa
 
     return (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-40 transition-colors">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-[460px] shadow-2xl transition-colors">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-[460px] shadow-2xl transition-colors overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 transition-colors">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Exam Timer</h2>

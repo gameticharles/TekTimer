@@ -1,10 +1,11 @@
 // ─── App Mode ────────────────────────────────────────────────────
-export type AppMode = 'home' | 'quiz' | 'exam';
+export type AppMode = 'home' | 'quiz' | 'exam' | 'proctor';
 export type TimerStatus = 'Idle' | 'Running' | 'Paused' | 'Ended';
 
 // ─── Timer Types ─────────────────────────────────────────────────
 export interface TimerBase {
     id: string;
+    groupId?: string; // Links a timer to a specific Exam Hall / Timer Group
     label: string;
     durationSeconds: number;
     remainingSeconds: number;
@@ -13,6 +14,36 @@ export interface TimerBase {
     fontSizeOverride: number | null;
     announcementSchedule: AnnouncementEntry[];
     endTimeUnix: number | null;
+    groupSession?: string;
+    groupStartTime?: string;
+    groupRemark?: string;
+}
+
+export interface TimerGroup {
+    id: string;
+    name: string; // e.g., 'Hall B-12'
+    location?: string; // e.g., 'North Campus'
+    session?: string;
+    scheduledStartTime?: string;
+    remark?: string;
+}
+
+export interface TimerPreset {
+    id: string;
+    name: string;
+    session?: string;
+    scheduledStartTime?: string;
+    remark?: string;
+    timers: AnyTimer[]; // Configuration for timers in this preset
+}
+
+export interface ExamLogEntry {
+    id: string;
+    timestamp: number;
+    type: 'STARTED' | 'WARNING' | 'ENDED' | 'SYSTEM' | 'INFO';
+    message: string;
+    timerId?: string;
+    groupId?: string;
 }
 
 export interface AnnouncementEntry {
@@ -78,6 +109,7 @@ export interface AppSettings {
 
     defaultAnnouncementSchedule: AnnouncementEntry[];
     quickPickMessages: string[];
+    savedPresets: TimerPreset[]; // Saved configurations for halls
 }
 
 import { DEFAULT_ANNOUNCEMENT_SCHEDULE } from './announcements/defaultSchedule';
@@ -116,4 +148,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
         'Check your name is on your paper.',
         'Pens down now.'
     ],
+    savedPresets: [],
 };

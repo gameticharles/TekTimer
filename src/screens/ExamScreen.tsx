@@ -11,7 +11,7 @@ import BlackoutScreen from '../components/BlackoutScreen';
 import CenterStageView from '../components/CenterStageView';
 import AnnouncementModal from '../components/AnnouncementModal';
 import type { AppSettings, ExamTimer } from '../lib/types';
-import { useTimerStore } from '../hooks/useTimerStore';
+import type { TimerStore } from '../hooks/useTimerStore';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useBlackout } from '../hooks/useBlackout';
 import { useIdleControls } from '../hooks/useIdleControls';
@@ -23,9 +23,11 @@ interface ExamScreenProps {
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
     onExit: () => void;
     onSettings: () => void;
+    groupId?: string;
+    store: TimerStore;
 }
 
-export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenProps) {
+export default function ExamScreen({ settings, onExit, onSettings, groupId, store }: ExamScreenProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editTimerId, setEditTimerId] = useState<string | null>(null);
     const [extraTimeTimerId, setExtraTimeTimerId] = useState<string | null>(null);
@@ -35,9 +37,11 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
-    const store = useTimerStore(settings);
 
-    const examTimers = store.timers as ExamTimer[];
+    // Filter timers by groupId when viewing a specific hall
+    const examTimers = groupId
+        ? (store.timers.filter(t => t.groupId === groupId) as ExamTimer[])
+        : (store.timers as ExamTimer[]);
     const hasRunning = examTimers.some((t) => t.status === 'Running');
     const hasPaused = examTimers.some((t) => t.status === 'Paused');
 
@@ -80,16 +84,22 @@ export default function ExamScreen({ settings, onExit, onSettings }: ExamScreenP
     }, [examTimers.length, store, exitFullscreen, toggleFullscreen]);
 
     const handleExit = useCallback(async () => {
-        audioManager.stopAll();
-        await store.clearAll();
-        onExit();
-    }, [store, onExit]);
+        if (groupId) {
+            // Coming from proctor dashboard — just navigate back, don't clear timers
+            onExit();
+        } else {
+            // Standalone exam mode — clear everything
+            audioManager.stopAll();
+            await store.clearAll();
+            onExit();
+        }
+    }, [store, onExit, groupId]);
 
     const handleAddTimer = useCallback(
         async (courseCode: string, courseTitle: string | undefined, program: string, studentCount: number, durationSeconds: number) => {
-            await store.createExamTimer(courseCode, courseTitle, program, studentCount, durationSeconds);
+            await store.createExamTimer(courseCode, courseTitle, program, studentCount, durationSeconds, groupId);
         },
-        [store],
+        [store, groupId],
     );
 
     // ── Drag & Drop ───────────────────────────────────────────────────

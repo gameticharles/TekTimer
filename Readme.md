@@ -8,28 +8,28 @@
 
 ## Table of Contents
 
-1. [Project Overview & Goals](#1-project-overview--goals)
+1. [Project Overview &amp; Goals](#1-project-overview--goals)
 2. [App Modes](#2-app-modes)
-3. [Tech Stack & Toolchain](#3-tech-stack--toolchain)
+3. [Tech Stack &amp; Toolchain](#3-tech-stack--toolchain)
 4. [Project Structure](#4-project-structure)
 5. [Data Models](#5-data-models)
 6. [Rust Backend Specification](#6-rust-backend-specification)
 7. [Frontend Component Specification](#7-frontend-component-specification)
 8. [UI Layout System](#8-ui-layout-system)
-9. [Font Size System](#9-font-size-system) ← NEW
-10. [Visual States & Animations](#10-visual-states--animations)
+9. [Font Size System](#9-font-size-system)
+10. [Visual States &amp; Animations](#10-visual-states--animations)
 11. [Audio System](#11-audio-system)
 12. [Fullscreen Presentation System](#12-fullscreen-presentation-system)
-13. [Extra Time Feature](#13-extra-time-feature) ← NEW
-14. [Blackout Mode](#14-blackout-mode) ← NEW
-15. [Pause All / Resume All](#15-pause-all--resume-all) ← NEW
-16. [Progress Bar](#16-progress-bar) ← NEW
-17. [Settings Panel](#17-settings-panel) ← NEW (warning thresholds, sound, end message, persistence)
-18. [Voice Announcement System](#18-voice-announcement-system) ← NEW
+13. [Extra Time Feature](#13-extra-time-feature)
+14. [Blackout Mode](#14-blackout-mode)
+15. [Pause All / Resume All](#15-pause-all--resume-all)
+16. [Progress Bar](#16-progress-bar)
+17. [Settings Panel](#17-settings-panel) (warning thresholds, sound, end message, persistence)
+18. [Voice Announcement System](#18-voice-announcement-system)
 19. [Add Timer Modal](#19-add-timer-modal)
-20. [Edge Cases & Error Handling](#20-edge-cases--error-handling)
-21. [Accessibility & Usability](#21-accessibility--usability)
-22. [Build & Packaging](#22-build--packaging)
+20. [Edge Cases &amp; Error Handling](#20-edge-cases--error-handling)
+21. [Accessibility &amp; Usability](#21-accessibility--usability)
+22. [Build &amp; Packaging](#22-build--packaging)
 23. [Implementation Order](#23-implementation-order)
 24. [Appendices](#24-appendices)
 
@@ -38,12 +38,14 @@
 ## 1. Project Overview & Goals
 
 ### What This Is
+
 A **cross-platform desktop application** that runs in **true OS fullscreen**, designed to display countdown timers on a projected screen in classrooms or lecture halls. Supports two modes:
 
 - **Quiz Mode** — A single, maximally large timer for one timed activity
 - **Exam Mode** — Up to 5 simultaneous timers for multi-session university examinations
 
 ### Primary Success Criteria
+
 - [ ] App launches into OS-level fullscreen covering the entire display
 - [ ] Timer text is legible from 15+ metres; font size is adjustable per-timer and globally
 - [ ] Timers remain accurate even when OS throttles JavaScript (Rust backend is the clock)
@@ -54,6 +56,7 @@ A **cross-platform desktop application** that runs in **true OS fullscreen**, de
 - [ ] Pressing `Escape` exits fullscreen without stopping timers
 
 ### Non-Goals
+
 - No network or cloud sync
 - No persistent history of past sessions
 - No user accounts or authentication
@@ -96,17 +99,18 @@ Up to 5 named exam timers in a dynamic grid. See Sections 7–8 for layout.
 
 ## 3. Tech Stack & Toolchain
 
-| Layer | Technology | Version | Notes |
-|---|---|---|---|
-| Desktop Shell | **Tauri** | `^2.x` | Rust backend + WebView frontend |
-| Frontend | **React** + TypeScript | `^18.x` / `^5.x` | `strict: true` |
-| Styling | **Tailwind CSS** | `^3.x` | JIT mode |
-| Icons | **lucide-react** | `^0.x` | Play, Pause, RotateCcw, Maximize, etc. |
-| Build Tool | **Vite** | `^5.x` | Tauri default |
-| Backend | **Rust** | `stable` 2021 edition | All timekeeping logic |
-| Persistence | **tauri-plugin-store** | `^2.x` | Settings saved to disk as JSON |
+| Layer         | Technology                   | Version                 | Notes                                  |
+| ------------- | ---------------------------- | ----------------------- | -------------------------------------- |
+| Desktop Shell | **Tauri**              | `^2.x`                | Rust backend + WebView frontend        |
+| Frontend      | **React** + TypeScript | `^18.x` / `^5.x`    | `strict: true`                       |
+| Styling       | **Tailwind CSS**       | `^3.x`                | JIT mode                               |
+| Icons         | **lucide-react**       | `^0.x`                | Play, Pause, RotateCcw, Maximize, etc. |
+| Build Tool    | **Vite**               | `^5.x`                | Tauri default                          |
+| Backend       | **Rust**               | `stable` 2021 edition | All timekeeping logic                  |
+| Persistence   | **tauri-plugin-store** | `^2.x`                | Settings saved to disk as JSON         |
 
 ### Rust Cargo Dependencies
+
 ```toml
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -275,21 +279,22 @@ pub struct TimerState {
 ## 6. Rust Backend Specification
 
 ### 6.1 Core Principle
+
 Rust owns all time calculation. `end_time_unix` is an absolute Unix timestamp. The frontend only renders; it never calculates elapsed time.
 
 ### 6.2 Tauri Commands
 
-| Command | Input | Action |
-|---|---|---|
-| `create_timer` | `duration_seconds, label` | UUID, insert Idle state, return |
-| `start_timer` | `id` | `end_time_unix = now + remaining`, status → Running |
-| `pause_timer` | `id` | Recalc remaining, clear end_time, status → Paused |
-| `reset_timer` | `id` | Restore `remaining = duration`, status → Idle |
-| `delete_timer` | `id` | Remove from map |
-| `add_extra_time` | `id, extra_seconds: u64` | See Section 13 |
-| `pause_all_timers` | — | Pause every Running timer atomically |
-| `resume_all_timers` | — | Resume every Paused timer atomically |
-| `set_fullscreen` | `fullscreen: bool` | Native window fullscreen |
+| Command               | Input                       | Action                                                 |
+| --------------------- | --------------------------- | ------------------------------------------------------ |
+| `create_timer`      | `duration_seconds, label` | UUID, insert Idle state, return                        |
+| `start_timer`       | `id`                      | `end_time_unix = now + remaining`, status → Running |
+| `pause_timer`       | `id`                      | Recalc remaining, clear end_time, status → Paused     |
+| `reset_timer`       | `id`                      | Restore `remaining = duration`, status → Idle       |
+| `delete_timer`      | `id`                      | Remove from map                                        |
+| `add_extra_time`    | `id, extra_seconds: u64`  | See Section 13                                         |
+| `pause_all_timers`  | —                          | Pause every Running timer atomically                   |
+| `resume_all_timers` | —                          | Resume every Paused timer atomically                   |
+| `set_fullscreen`    | `fullscreen: bool`        | Native window fullscreen                               |
 
 ### 6.3 `add_extra_time` Command
 
@@ -530,13 +535,13 @@ Full screen, single timer, nothing else visible.
 
 Sort by `studentCount` descending before render.
 
-| Count | Grid Class | Special Rule |
-|---|---|---|
-| 1 | `grid-cols-1 grid-rows-1` | Full screen |
-| 2 | `grid-cols-2 grid-rows-1` | Side by side |
-| 3 | `grid-cols-2 grid-rows-2` | Index 0: `col-span-2` |
-| 4 | `grid-cols-2 grid-rows-2` | Equal quadrants |
-| 5 | `grid-cols-3 grid-rows-2` | Bottom-right empty |
+| Count | Grid Class                  | Special Rule           |
+| ----- | --------------------------- | ---------------------- |
+| 1     | `grid-cols-1 grid-rows-1` | Full screen            |
+| 2     | `grid-cols-2 grid-rows-1` | Side by side           |
+| 3     | `grid-cols-2 grid-rows-2` | Index 0:`col-span-2` |
+| 4     | `grid-cols-2 grid-rows-2` | Equal quadrants        |
+| 5     | `grid-cols-3 grid-rows-2` | Bottom-right empty     |
 
 All grid containers: `h-screen w-screen overflow-hidden`.
 
@@ -570,13 +575,13 @@ Global Font Scale (AppSettings.globalFontScale)
 
 These are the unscaled defaults at 100% scale:
 
-| Context | CSS Expression | Result at 1920px |
-|---|---|---|
-| Quiz Mode (single) | `clamp(8rem, 25vw, 22rem)` | ~480px |
-| Exam Mode, 1 timer | `clamp(6rem, 20vw, 18rem)` | ~384px |
-| Exam Mode, 2 timers | `clamp(4rem, 12vw, 12rem)` | ~230px |
-| Exam Mode, 3–4 timers | `clamp(3rem, 9vw, 9rem)` | ~173px |
-| Exam Mode, 5 timers | `clamp(2rem, 7vw, 7rem)` | ~134px |
+| Context                | CSS Expression               | Result at 1920px |
+| ---------------------- | ---------------------------- | ---------------- |
+| Quiz Mode (single)     | `clamp(8rem, 25vw, 22rem)` | ~480px           |
+| Exam Mode, 1 timer     | `clamp(6rem, 20vw, 18rem)` | ~384px           |
+| Exam Mode, 2 timers    | `clamp(4rem, 12vw, 12rem)` | ~230px           |
+| Exam Mode, 3–4 timers | `clamp(3rem, 9vw, 9rem)`   | ~173px           |
+| Exam Mode, 5 timers    | `clamp(2rem, 7vw, 7rem)`   | ~134px           |
 
 These base values are stored in `fontSizeUtils.ts` and used to compute the CSS variable value.
 
@@ -723,10 +728,10 @@ In Quiz Mode, there is only one timer. The `ControlBar` includes `[A−]` and `[
 
 ### 9.9 Keyboard Shortcuts for Font Size
 
-| Context | Shortcut | Action |
-|---|---|---|
-| Quiz Mode | `+` / `=` | Increase clock size (global) |
-| Quiz Mode | `-` | Decrease clock size (global) |
+| Context   | Shortcut                                    | Action                       |
+| --------- | ------------------------------------------- | ---------------------------- |
+| Quiz Mode | `+` / `=`                               | Increase clock size (global) |
+| Quiz Mode | `-`                                       | Decrease clock size (global) |
 | Exam Mode | `Ctrl` + hover a card, then `+` / `-` | Adjust that card's font size |
 
 ---
@@ -748,15 +753,15 @@ const isEnded    = timer.status === 'Ended';
 
 ### 10.2 State Table
 
-| State | Trigger | Background | Clock Color | Animation |
-|---|---|---|---|---|
-| Idle | `status === 'Idle'` | `#111` | White | None |
-| Running | `status === 'Running'`, no threshold met | `#111` | White | None |
-| Warning | `remaining <= warningThreshold` | `#111` | Amber `#fbbf24` | Slow glow pulse |
-| Critical | `remaining <= criticalThreshold` | `#1a0a0a` | Red `#f87171` | Fast glow pulse |
-| Final 10 | `remaining <= 10` | `#1a0a0a` | Red | Heartbeat scale each second |
-| Ended | `status === 'Ended'` | `#7f1d1d` | White | Clock blinks 1Hz |
-| Dismissed | `isDismissed === true` | `#1a1a1a` | Gray | None |
+| State     | Trigger                                    | Background  | Clock Color       | Animation                   |
+| --------- | ------------------------------------------ | ----------- | ----------------- | --------------------------- |
+| Idle      | `status === 'Idle'`                      | `#111`    | White             | None                        |
+| Running   | `status === 'Running'`, no threshold met | `#111`    | White             | None                        |
+| Warning   | `remaining <= warningThreshold`          | `#111`    | Amber `#fbbf24` | Slow glow pulse             |
+| Critical  | `remaining <= criticalThreshold`         | `#1a0a0a` | Red `#f87171`   | Fast glow pulse             |
+| Final 10  | `remaining <= 10`                        | `#1a0a0a` | Red               | Heartbeat scale each second |
+| Ended     | `status === 'Ended'`                     | `#7f1d1d` | White             | Clock blinks 1Hz            |
+| Dismissed | `isDismissed === true`                   | `#1a1a1a` | Gray              | None                        |
 
 ### 10.3 CSS Keyframes
 
@@ -852,9 +857,11 @@ useEffect(() => {
 ## 12. Fullscreen Presentation System
 
 ### 12.1 Requirement
+
 True OS-level fullscreen — no taskbar, no window chrome visible.
 
 ### 12.2 Rust Command
+
 ```rust
 #[tauri::command]
 fn set_fullscreen(window: tauri::Window, fullscreen: bool) -> Result<(), String> {
@@ -863,6 +870,7 @@ fn set_fullscreen(window: tauri::Window, fullscreen: bool) -> Result<(), String>
 ```
 
 ### 12.3 `useFullscreen.ts` Hook
+
 ```typescript
 export function useFullscreen() {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -881,6 +889,7 @@ export function useFullscreen() {
 ```
 
 ### 12.4 Keyboard Handling
+
 ```typescript
 // In QuizScreen / ExamScreen
 useEffect(() => {
@@ -896,6 +905,7 @@ useEffect(() => {
 `Escape` exits fullscreen — it does NOT stop the timer or navigate away.
 
 ### 12.5 `tauri.conf.json`
+
 ```json
 {
   "app": {
@@ -916,6 +926,7 @@ useEffect(() => {
 ## 13. Extra Time Feature ← NEW
 
 ### 13.1 Purpose
+
 Universities commonly grant 25% or 50% additional exam time for students with accessibility accommodations. An invigilator must be able to extend a running timer without stopping it.
 
 ### 13.2 `ExtraTimeModal.tsx`
@@ -957,9 +968,11 @@ When extra time is added, briefly flash a `+N min` badge over the clock for 2 se
 ## 14. Blackout Mode ← NEW
 
 ### 14.1 Purpose
+
 Before distributing exam papers or whenever the invigilator needs to prevent students from seeing the screen, one click covers the entire projected display.
 
 ### 14.2 Trigger
+
 A `[ 🌑 Blackout ]` button in the Exam Mode toolbar (top-right, always visible). In Quiz Mode, it is accessible via the `ControlBar`.
 
 Keyboard shortcut: `B` (when no input is focused).
@@ -988,6 +1001,7 @@ const BlackoutScreen = ({ onReveal }: BlackoutScreenProps) => (
 ```
 
 **Behaviour:**
+
 - Covers the entire screen including all timer cards
 - The projected screen shows only black
 - Timers continue running in the background — blackout does not pause anything
@@ -1000,6 +1014,7 @@ const BlackoutScreen = ({ onReveal }: BlackoutScreenProps) => (
 ## 15. Pause All / Resume All ← NEW
 
 ### 15.1 Purpose
+
 In an emergency (fire alarm, unexpected interruption), the invigilator must be able to freeze all timers simultaneously.
 
 ### 15.2 UI
@@ -1016,10 +1031,11 @@ A pair of buttons in the Exam Mode top toolbar:
 Both buttons remain visible at all times (not hidden when irrelevant — just disabled) so the invigilator can find them instantly in an emergency.
 
 ### 15.3 Keyboard Shortcuts
-| Key | Action |
-|-----|--------|
-| `P` | Pause All (when no input focused) |
-| `Shift` + `P` | Resume All |
+
+| Key               | Action                            |
+| ----------------- | --------------------------------- |
+| `P`             | Pause All (when no input focused) |
+| `Shift` + `P` | Resume All                        |
 
 ### 15.4 Visual Confirmation
 
@@ -1030,6 +1046,7 @@ When `pause_all_timers` is called, each Running timer card briefly shows a `⏸ 
 ## 16. Progress Bar ← NEW
 
 ### 16.1 Purpose
+
 A thin visual bar showing elapsed vs. total time. Gives students a spatial/gestalt sense of how much time remains without reading digits.
 
 ### 16.2 `ProgressBar.tsx`
@@ -1122,13 +1139,13 @@ Settings are auto-saved on every change via `tauri-plugin-store`.
 
 ### 17.3 Validation Rules
 
-| Setting | Rule |
-|---|---|
-| Warning threshold | Must be > critical threshold. Show inline error if not. |
-| Critical threshold | Must be < warning threshold and >= 1. |
-| Custom alarm | File must be `.mp3`, `.wav`, or `.ogg`. Max 10MB. Play a preview on selection. |
-| End message | Max 60 characters. Required (non-empty). |
-| Font scale | 50–200, integer only. |
+| Setting            | Rule                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| Warning threshold  | Must be > critical threshold. Show inline error if not.                              |
+| Critical threshold | Must be < warning threshold and >= 1.                                                |
+| Custom alarm       | File must be `.mp3`, `.wav`, or `.ogg`. Max 10MB. Play a preview on selection. |
+| End message        | Max 60 characters. Required (non-empty).                                             |
+| Font scale         | 50–200, integer only.                                                               |
 
 ### 17.4 Custom Alarm Sound Upload
 
@@ -1160,11 +1177,11 @@ The voice announcement system gives the app a **spoken voice** — automatically
 
 **Three announcement types exist:**
 
-| Type | Description | Example |
-|---|---|---|
-| **Threshold Announcement** | Fires automatically when a timer crosses a configured time milestone | *"Geomatic Engineering, you have 10 minutes remaining."* |
-| **Scripted Message** | Invigilator pre-writes a message tied to a specific time milestone for a specific timer | *"You should place your scannables on top of your question papers now."* |
-| **Ad-hoc Announcement** | Invigilator types (or selects from a quick-pick list) a message and fires it immediately | *"Quiet please — invigilators are collecting papers."* |
+| Type                             | Description                                                                              | Example                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Threshold Announcement** | Fires automatically when a timer crosses a configured time milestone                     | *"Geomatic Engineering, you have 10 minutes remaining."*                 |
+| **Scripted Message**       | Invigilator pre-writes a message tied to a specific time milestone for a specific timer  | *"You should place your scannables on top of your question papers now."* |
+| **Ad-hoc Announcement**    | Invigilator types (or selects from a quick-pick list) a message and fires it immediately | *"Quiet please — invigilators are collecting papers."*                  |
 
 All three types are spoken via the same TTS engine. The LLM layer is **optional** and only used when enabled — it enhances the wording of threshold announcements to sound natural rather than robotic.
 
@@ -1266,6 +1283,7 @@ export const DEFAULT_MILESTONES: AnnouncementMilestone[] = [
 ```
 
 Extend `AppSettings` with:
+
 ```typescript
 // Add to AppSettings interface
 announcementsEnabled: boolean;     // Master switch. Default: true
@@ -1276,6 +1294,7 @@ quickPickMessages: string[];       // Invigilator-saved ad-hoc messages for re-u
 ```
 
 Extend `ExamTimer` and `QuizTimer` with:
+
 ```typescript
 // Add to TimerBase
 scriptedAnnouncements: Announcement[];  // Per-timer custom scripted messages
@@ -1302,13 +1321,13 @@ src/lib/announcements/
 
 Announcement text supports the following tokens, replaced at fire-time:
 
-| Token | Replaced With | Example Output |
-|---|---|---|
-| `{program}` | `timer.program` (Exam) or `timer.label` (Quiz) | *"Geomatic Engineering"* |
-| `{courseCode}` | `timer.courseCode` | *"GEOM 261"* |
-| `{time}` | Human-readable remaining time | *"10 minutes"*, *"1 minute"*, *"30 seconds"* |
-| `{timeExact}` | Precise clock format | *"10:00"*, *"01:23"* |
-| `{studentCount}` | `timer.studentCount` | *"45 students"* |
+| Token              | Replaced With                                      | Example Output                                     |
+| ------------------ | -------------------------------------------------- | -------------------------------------------------- |
+| `{program}`      | `timer.program` (Exam) or `timer.label` (Quiz) | *"Geomatic Engineering"*                         |
+| `{courseCode}`   | `timer.courseCode`                               | *"GEOM 261"*                                     |
+| `{time}`         | Human-readable remaining time                      | *"10 minutes"*, *"1 minute"*, *"30 seconds"* |
+| `{timeExact}`    | Precise clock format                               | *"10:00"*, *"01:23"*                           |
+| `{studentCount}` | `timer.studentCount`                             | *"45 students"*                                  |
 
 ```typescript
 // src/lib/announcements/templateRenderer.ts
@@ -1385,14 +1404,15 @@ export const announcementQueue = new AnnouncementQueue();
 ```
 
 **Priority values:**
-| Announcement Type | Priority |
-|---|---|
-| Timer ended (`atSeconds: 0`) | 100 |
-| Critical threshold (≤ 1 min) | 80 |
-| Warning threshold (≤ 10 min) | 60 |
-| Scripted message | 50 |
-| Ad-hoc (manual) | 40 |
-| Other milestones | 20 |
+
+| Announcement Type              | Priority |
+| ------------------------------ | -------- |
+| Timer ended (`atSeconds: 0`) | 100      |
+| Critical threshold (≤ 1 min)  | 80       |
+| Warning threshold (≤ 10 min)  | 60       |
+| Scripted message               | 50       |
+| Ad-hoc (manual)                | 40       |
+| Other milestones               | 20       |
 
 ---
 
@@ -1887,15 +1907,15 @@ A small, collapsible log panel at the bottom of the Exam Screen (not visible to 
 
 ### 18.14 Concurrency & Edge Cases
 
-| Scenario | Handling |
-|---|---|
-| Two timers hit 10-minute milestone simultaneously | Both fire into the queue. Higher `studentCount` timer gets priority. Queue speaks them in sequence with 0.5s gap between. |
-| LLM call takes > 2 seconds | The announcement is still enqueued and spoken when ready. A 5-second timeout forces fallback to the raw template text. |
-| TTS API key invalid / network offline | Falls back silently to Web Speech. A small `⚠ TTS Fallback` indicator appears in the announcement log. |
-| Timer reset mid-session | `announcementScheduler.resetTimer(id)` clears fired-milestone memory so they can fire again on the new countdown. |
-| Blackout active when milestone fires | Audio (TTS) still plays normally — blackout is visual only. |
-| Multiple ad-hoc announcements fired rapidly | All queued and spoken in order. The panel shows a queue depth indicator: `🔊 Speaking... (2 queued)`. |
-| Ollama not running | `LLMEnhancer` catches the connection refused error, logs a warning to console, and returns the raw template text. The invigilator is notified once via a toast: *"Ollama connection failed — using plain announcements"*. |
+| Scenario                                          | Handling                                                                                                                                                                                                                       |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Two timers hit 10-minute milestone simultaneously | Both fire into the queue. Higher `studentCount` timer gets priority. Queue speaks them in sequence with 0.5s gap between.                                                                                                    |
+| LLM call takes > 2 seconds                        | The announcement is still enqueued and spoken when ready. A 5-second timeout forces fallback to the raw template text.                                                                                                         |
+| TTS API key invalid / network offline             | Falls back silently to Web Speech. A small `⚠ TTS Fallback` indicator appears in the announcement log.                                                                                                                      |
+| Timer reset mid-session                           | `announcementScheduler.resetTimer(id)` clears fired-milestone memory so they can fire again on the new countdown.                                                                                                            |
+| Blackout active when milestone fires              | Audio (TTS) still plays normally — blackout is visual only.                                                                                                                                                                   |
+| Multiple ad-hoc announcements fired rapidly       | All queued and spoken in order. The panel shows a queue depth indicator:`🔊 Speaking... (2 queued)`.                                                                                                                         |
+| Ollama not running                                | `LLMEnhancer` catches the connection refused error, logs a warning to console, and returns the raw template text. The invigilator is notified once via a toast: *"Ollama connection failed — using plain announcements"*. |
 
 ---
 
@@ -1907,12 +1927,12 @@ Fields: Label (optional, max 60 chars), Hours + Minutes (min 1 min, max 9h 59m),
 
 ### Exam Mode — `AddExamTimerModal.tsx`
 
-| Field | Type | Validation |
-|---|---|---|
-| Course Code | text | Required, max 20 chars |
-| Program / Cohort | text | Required, max 80 chars |
-| Student Count | number | Required, integer 1–999 |
-| Duration | Hours + Minutes | Min 1 min, max 9h 59m |
+| Field            | Type            | Validation               |
+| ---------------- | --------------- | ------------------------ |
+| Course Code      | text            | Required, max 20 chars   |
+| Program / Cohort | text            | Required, max 80 chars   |
+| Student Count    | number          | Required, integer 1–999 |
+| Duration         | Hours + Minutes | Min 1 min, max 9h 59m    |
 
 Global shortcut: `N` opens modal. `Escape` closes it. Add button disabled at 5 timers.
 
@@ -1922,12 +1942,12 @@ Fields: Label (optional, max 60 chars), Hours + Minutes (min 1 min, max 9h 59m),
 
 ### Exam Mode — `AddExamTimerModal.tsx`
 
-| Field | Type | Validation |
-|---|---|---|
-| Course Code | text | Required, max 20 chars |
-| Program / Cohort | text | Required, max 80 chars |
-| Student Count | number | Required, integer 1–999 |
-| Duration | Hours + Minutes | Min 1 min, max 9h 59m |
+| Field            | Type            | Validation               |
+| ---------------- | --------------- | ------------------------ |
+| Course Code      | text            | Required, max 20 chars   |
+| Program / Cohort | text            | Required, max 80 chars   |
+| Student Count    | number          | Required, integer 1–999 |
+| Duration         | Hours + Minutes | Min 1 min, max 9h 59m    |
 
 Global shortcut: `N` opens modal. `Escape` closes it. Add button disabled at 5 timers.
 
@@ -1935,33 +1955,33 @@ Global shortcut: `N` opens modal. `Escape` closes it. Add button disabled at 5 t
 
 ## 19. Edge Cases & Error Handling
 
-| Scenario | Handling |
-|---|---|
-| Multiple timers end simultaneously | Each timer ID has its own `Audio` instance — no volume doubling |
-| OS sleep / wake | `end_time_unix - now_unix()` recalculates on wake. If zero was passed during sleep, status is `Ended` on next tick |
-| Negative remaining time | `u64::saturating_sub` in Rust clamps to 0 always |
-| Extra time added to an Ended timer | Backend adds seconds and sets status back to `Running` |
-| Custom alarm file deleted from disk | `audioManager.play()` catches the error and silently falls back to `bell.mp3` |
-| Settings file corrupted on disk | `useSettings` merges saved values with `DEFAULT_SETTINGS` — missing keys fall back gracefully |
-| Font scale buttons at limits | `[A−]` disabled at 50%; `[A+]` disabled at 200% |
-| Blackout + timer ends during blackout | Audio still fires (sound is not blocked by blackout). Invigilator hears the alarm; reveal screen to see the end state |
-| Pause All during blackout | Works correctly — blackout is a UI overlay; Rust state is unaffected |
-| 6th timer attempt | Add button is `disabled`. Tooltip: "Maximum 5 simultaneous sessions reached." |
+| Scenario                              | Handling                                                                                                               |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Multiple timers end simultaneously    | Each timer ID has its own `Audio` instance — no volume doubling                                                     |
+| OS sleep / wake                       | `end_time_unix - now_unix()` recalculates on wake. If zero was passed during sleep, status is `Ended` on next tick |
+| Negative remaining time               | `u64::saturating_sub` in Rust clamps to 0 always                                                                     |
+| Extra time added to an Ended timer    | Backend adds seconds and sets status back to `Running`                                                               |
+| Custom alarm file deleted from disk   | `audioManager.play()` catches the error and silently falls back to `bell.mp3`                                      |
+| Settings file corrupted on disk       | `useSettings` merges saved values with `DEFAULT_SETTINGS` — missing keys fall back gracefully                     |
+| Font scale buttons at limits          | `[A−]` disabled at 50%; `[A+]` disabled at 200%                                                                   |
+| Blackout + timer ends during blackout | Audio still fires (sound is not blocked by blackout). Invigilator hears the alarm; reveal screen to see the end state  |
+| Pause All during blackout             | Works correctly — blackout is a UI overlay; Rust state is unaffected                                                  |
+| 6th timer attempt                     | Add button is `disabled`. Tooltip: "Maximum 5 simultaneous sessions reached."                                        |
 
 ---
 
 ## 20. Accessibility & Usability
 
-| Concern | Implementation |
-|---|---|
-| Contrast | All text passes WCAG AA (4.5:1). Amber on dark, white on red — verify both. |
-| Progress bar | `role="progressbar"` with `aria-valuenow/min/max` |
-| Font size controls | `aria-label="Decrease font size"` / `aria-label="Increase font size"` |
-| Font scale tooltip | Shows `"Current: 120% (overriding global 100%)"` on hover |
-| Reduced motion | All keyframe animations suppressed via `prefers-reduced-motion: reduce` |
-| Focus trap | Modals and Settings Panel trap focus. Escape closes and returns focus. |
-| Live region | Clock has `aria-live="off"` — announcing every second is too noisy. Status changes (Paused, Ended) are announced via a separate `aria-live="polite"` status span. |
-| Keyboard nav | Full operability: Tab, Enter, Space, Escape. All icon buttons have `aria-label`. |
+| Concern            | Implementation                                                                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contrast           | All text passes WCAG AA (4.5:1). Amber on dark, white on red — verify both.                                                                                           |
+| Progress bar       | `role="progressbar"` with `aria-valuenow/min/max`                                                                                                                  |
+| Font size controls | `aria-label="Decrease font size"` / `aria-label="Increase font size"`                                                                                              |
+| Font scale tooltip | Shows `"Current: 120% (overriding global 100%)"` on hover                                                                                                            |
+| Reduced motion     | All keyframe animations suppressed via `prefers-reduced-motion: reduce`                                                                                              |
+| Focus trap         | Modals and Settings Panel trap focus. Escape closes and returns focus.                                                                                                 |
+| Live region        | Clock has `aria-live="off"` — announcing every second is too noisy. Status changes (Paused, Ended) are announced via a separate `aria-live="polite"` status span. |
+| Keyboard nav       | Full operability: Tab, Enter, Space, Escape. All icon buttons have `aria-label`.                                                                                     |
 
 ---
 
@@ -1974,6 +1994,7 @@ npm run tauri build  # Production installers
 ```
 
 Additional Tauri plugin registration in `main.rs`:
+
 ```rust
 tauri::Builder::default()
     .plugin(tauri_plugin_store::Builder::default().build())
@@ -1991,6 +2012,7 @@ tauri::Builder::default()
 ## 22. Implementation Order
 
 ### Phase 1 — Rust Foundation
+
 1. Scaffold Tauri project, install plugins (`tauri-plugin-store`, `tauri-plugin-dialog`)
 2. `TimerState` struct, `AppState` global
 3. All Tauri commands (create, start, pause, reset, delete, add_extra_time, pause_all, resume_all, set_fullscreen)
@@ -1998,18 +2020,21 @@ tauri::Builder::default()
 5. Manual test via browser console `invoke()`
 
 ### Phase 2 — Settings & Persistence
+
 6. `types.ts` including `AppSettings` and `DEFAULT_SETTINGS`
 7. `useSettings.ts` hook with `tauri-plugin-store`
 8. `SettingsPanel.tsx` (UI only, wired to hook)
 9. Custom alarm file picker
 
 ### Phase 3 — Frontend Core
+
 10. `useTauriEvents.ts`, `useTimerStore.ts`
 11. `useFullscreen.ts`, `useIdleControls.ts`, `useBlackout.ts`
 12. `formatTime.ts`, `gridLayout.ts`, `audioManager.ts`
 13. `fontSizeUtils.ts` — `scaleClamp()`, `getEffectiveScale()`
 
 ### Phase 4 — Quiz Mode (Build First — Simpler)
+
 14. `HomeScreen.tsx`
 15. `QuizSetupModal.tsx`
 16. `QuizTimer.tsx` — giant clock, font size reads from global scale
@@ -2019,6 +2044,7 @@ tauri::Builder::default()
 20. Audio integration, final-10 heartbeat, end state
 
 ### Phase 5 — Exam Mode
+
 21. `FontSizeControl.tsx` component
 22. `TimerCard.tsx` — all states + per-timer font controls + `[+Time]` button
 23. `ExtraTimeModal.tsx`
@@ -2029,6 +2055,7 @@ tauri::Builder::default()
 28. `BlackoutScreen.tsx`
 
 ### Phase 6 — Polish & QA
+
 29. All CSS keyframe animations + `prefers-reduced-motion`
 30. Accessibility audit (labels, focus, contrast, ARIA)
 31. Test all 5 grid layouts at 1920×1080 and 1280×720
@@ -2045,6 +2072,7 @@ tauri::Builder::default()
 ## 23. Appendices
 
 ### Appendix A: `formatTime.ts`
+
 ```typescript
 export function formatTime(totalSeconds: number, forceHours = false): string {
   const s = Math.max(0, totalSeconds);
@@ -2060,6 +2088,7 @@ export function formatTime(totalSeconds: number, forceHours = false): string {
 ```
 
 ### Appendix B: `gridLayout.ts`
+
 ```typescript
 export function getGridClass(count: number): string {
   const base = 'grid h-screen w-screen';
@@ -2086,6 +2115,7 @@ export function getBaseClampKey(count: number): string {
 ```
 
 ### Appendix C: Visual State Helper
+
 ```typescript
 export function getTimerVisuals(timer: AnyTimer, settings: AppSettings) {
   const { status, remainingSeconds, isDismissed } = timer;
@@ -2102,27 +2132,27 @@ export function getTimerVisuals(timer: AnyTimer, settings: AppSettings) {
 
 ### Appendix D: Complete Keyboard Shortcut Reference
 
-| Key | Context | Action |
-|---|---|---|
-| `Space` | Quiz, timer running | Pause |
-| `Space` | Quiz, timer paused | Resume |
-| `R` | Quiz | Reset (with confirmation) |
-| `B` | Quiz / Exam | Toggle Blackout |
-| `P` | Exam | Pause All |
-| `Shift+P` | Exam | Resume All |
-| `N` | Exam | Open Add Timer modal |
-| `+` / `=` | Quiz | Increase global font size |
-| `-` | Quiz | Decrease global font size |
-| `Escape` | Anywhere | Exit fullscreen (timer keeps running) |
-| `F11` | Anywhere | Toggle fullscreen |
+| Key           | Context             | Action                                |
+| ------------- | ------------------- | ------------------------------------- |
+| `Space`     | Quiz, timer running | Pause                                 |
+| `Space`     | Quiz, timer paused  | Resume                                |
+| `R`         | Quiz                | Reset (with confirmation)             |
+| `B`         | Quiz / Exam         | Toggle Blackout                       |
+| `P`         | Exam                | Pause All                             |
+| `Shift+P`   | Exam                | Resume All                            |
+| `N`         | Exam                | Open Add Timer modal                  |
+| `+` / `=` | Quiz                | Increase global font size             |
+| `-`         | Quiz                | Decrease global font size             |
+| `Escape`    | Anywhere            | Exit fullscreen (timer keeps running) |
+| `F11`       | Anywhere            | Toggle fullscreen                     |
 
 ---
 
-*End of Specification — v4.0*  
+*End of Specification — v4.0*
 *Paste this entire document into your AI coding agent before creating any files.*
 
-
 # 🔊 Announcement System — Specification Addendum for v4.0
+
 ## Section 18: TTS / LLM Voice Announcements
 
 > **How to use this document:** This addendum extends the main spec (v4.0). Slot it in as **Section 18** and shift the existing sections 18–23 to 19–24. All data models, implementation order, and appendices in v4.0 remain valid — this document adds to them.
@@ -2131,7 +2161,7 @@ export function getTimerVisuals(timer: AnyTimer, settings: AppSettings) {
 
 ## Table of Contents (This Addendum)
 
-- [18.1 Overview & Goals](#181-overview--goals)
+- [18.1 Overview &amp; Goals](#181-overview--goals)
 - [18.2 Provider Architecture](#182-provider-architecture)
 - [18.3 Data Models](#183-data-models)
 - [18.4 Announcement Queue](#184-announcement-queue)
@@ -2145,16 +2175,18 @@ export function getTimerVisuals(timer: AnyTimer, settings: AppSettings) {
 - [18.12 Settings Panel Additions](#1812-settings-panel-additions)
 - [18.13 Edge Cases](#1813-edge-cases)
 - [18.14 Implementation Order](#1814-implementation-order)
-- [18.15 Appendix: Default Schedule & Example Messages](#1815-appendix-default-schedule--example-messages)
+- [18.15 Appendix: Default Schedule &amp; Example Messages](#1815-appendix-default-schedule--example-messages)
 
 ---
 
 ## 18.1 Overview & Goals
 
 ### What This Is
+
 An automated voice announcement system that reads time milestone messages aloud during exams and quizzes. Announcements are triggered by the countdown timer, speak in a natural voice, and can be customised per exam session.
 
 ### Example Announcements in Practice
+
 ```
 At 60 min remaining:  "Geomatic Engineering, you have one hour remaining."
 At 30 min remaining:  "Geomatic Engineering, you have thirty minutes remaining.
@@ -2168,6 +2200,7 @@ Manual (ad hoc):      "Attention all students — there is a brief interruption.
 ```
 
 ### Goals
+
 - [ ] Announcements fire automatically at configured time milestones without invigilator action
 - [ ] Message text is fully customisable per timer and per milestone
 - [ ] Template variables allow one message template to work across all exam groups
@@ -2270,6 +2303,7 @@ export class WebSpeechTTSProvider implements TTSProvider {
 ```
 
 **Notes on system voices:**
+
 - macOS provides high-quality voices (Samantha, Daniel, Karen, etc.)
 - Windows 10/11 provides Neural voices if the language pack is installed
 - Linux support varies by distro — falls back to espeak
@@ -2334,14 +2368,14 @@ export class OpenAITTSProvider implements TTSProvider {
 
 **Available OpenAI voices and character:**
 
-| Voice | Character | Best for |
-|---|---|---|
-| `nova` | Warm, clear, female | General announcements (recommended default) |
-| `onyx` | Deep, authoritative, male | Formal exam settings |
-| `alloy` | Neutral, balanced | Multilingual content |
-| `shimmer` | Soft, friendly | Quiz mode / less formal |
-| `echo` | Clear, professional, male | Lecture hall projection |
-| `fable` | Expressive | Not recommended for exams |
+| Voice       | Character                 | Best for                                    |
+| ----------- | ------------------------- | ------------------------------------------- |
+| `nova`    | Warm, clear, female       | General announcements (recommended default) |
+| `onyx`    | Deep, authoritative, male | Formal exam settings                        |
+| `alloy`   | Neutral, balanced         | Multilingual content                        |
+| `shimmer` | Soft, friendly            | Quiz mode / less formal                     |
+| `echo`    | Clear, professional, male | Lecture hall projection                     |
+| `fable`   | Expressive                | Not recommended for exams                   |
 
 ---
 
@@ -2517,6 +2551,7 @@ export interface TimerBase {
 ## 18.4 Announcement Queue
 
 ### Why a Queue?
+
 If two timers reach a 10-minute milestone at the same tick, both try to speak simultaneously. This must be prevented. All announcements — from all timers — are routed through a single serial queue.
 
 ### `announcementQueue.ts`
@@ -2636,17 +2671,17 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 ### Available Variables
 
-| Variable | Resolves to | Example |
-|---|---|---|
-| `{program}` | Full program name | `BSc Geomatic Engineering` |
-| `{courseCode}` | Course code | `GEOM 261` |
-| `{label}` | Timer label (quiz mode) | `Quiz 1 – Section A` |
-| `{remainingMinutes}` | Whole minutes left (floor) | `10` |
-| `{remainingSeconds}` | Exact seconds left | `600` |
-| `{remainingWords}` | Minutes left in words | `ten minutes` |
-| `{elapsedMinutes}` | Minutes elapsed (floor) | `50` |
-| `{totalMinutes}` | Total exam duration in minutes | `60` |
-| `{studentCount}` | Number of students | `45` |
+| Variable               | Resolves to                    | Example                      |
+| ---------------------- | ------------------------------ | ---------------------------- |
+| `{program}`          | Full program name              | `BSc Geomatic Engineering` |
+| `{courseCode}`       | Course code                    | `GEOM 261`                 |
+| `{label}`            | Timer label (quiz mode)        | `Quiz 1 – Section A`      |
+| `{remainingMinutes}` | Whole minutes left (floor)     | `10`                       |
+| `{remainingSeconds}` | Exact seconds left             | `600`                      |
+| `{remainingWords}`   | Minutes left in words          | `ten minutes`              |
+| `{elapsedMinutes}`   | Minutes elapsed (floor)        | `50`                       |
+| `{totalMinutes}`     | Total exam duration in minutes | `60`                       |
+| `{studentCount}`     | Number of students             | `45`                       |
 
 ### Variable Resolution
 
@@ -2750,6 +2785,7 @@ const checkAndFireAnnouncements = (
 ```
 
 `markAnnouncementSpoken` updates the timer's schedule in `useTimerStore`:
+
 ```typescript
 const markAnnouncementSpoken = (timerId: string, entryId: string) => {
   setTimers(prev => prev.map(t => {
@@ -2765,6 +2801,7 @@ const markAnnouncementSpoken = (timerId: string, entryId: string) => {
 ```
 
 ### Reset Behaviour
+
 When `reset_timer` is called, set `hasBeenSpoken = false` on all entries — so if the invigilator restarts the timer, announcements fire again.
 
 ---
@@ -2840,9 +2877,11 @@ export const DEFAULT_ANNOUNCEMENT_SCHEDULE: AnnouncementEntry[] = [
 ## 18.8 Manual Announce Panel
 
 ### Purpose
+
 The invigilator may need to make an ad-hoc announcement that is not on any schedule — e.g., "Please remain seated, papers are still being collected" or "There is an error on question 4 — please cross it out."
 
 ### Trigger
+
 A `[ 📢 Announce ]` button in the Exam Mode toolbar and in the Quiz Mode `ControlBar`. Always visible.
 
 ### `ManualAnnouncePanel.tsx`
@@ -2866,6 +2905,7 @@ A small popover that appears above the button:
 ```
 
 **Behaviour:**
+
 - **Quick buttons** immediately enqueue a pre-set message with `priority: 0` (front of queue — highest priority)
 - **Custom text** area supports the same `{variable}` template syntax. A live preview shows the resolved text.
 - **Address** selector: "All timers" appends no prefix; selecting a specific timer prepends `{courseCode}` to the message
@@ -2891,9 +2931,11 @@ export const DEFAULT_QUICK_ANNOUNCEMENTS = [
 ## 18.9 LLM-Generated Announcements
 
 ### Purpose
+
 When the LLM feature is enabled, the invigilator can ask for a contextually appropriate announcement to be generated rather than writing it manually. Useful for situations not covered by the default schedule.
 
 ### Use Cases
+
 - "Generate a polite reminder that phones must be face-down"
 - "Write an announcement telling students they are approximately halfway through"
 - "Draft a message explaining that extra time students have 15 more minutes"
@@ -3014,6 +3056,7 @@ Displays the timer's full announcement schedule as an editable table:
 ```
 
 Each row is editable inline:
+
 - **When:** Number input (minutes) with a small "min left" label. Converts to/from seconds internally.
 - **Message:** Text area showing the template string. Below it, a "Preview" shows the resolved string using current timer values.
 - **On/Off toggle:** Enables/disables without deleting.
@@ -3021,6 +3064,7 @@ Each row is editable inline:
 - **Drag to reorder:** Rows are drag-sortable (though order doesn't affect trigger logic — it's cosmetic for the editor).
 
 Variable reference hint visible at the bottom:
+
 ```
 Available variables: {program}  {courseCode}  {remainingMinutes}  
                      {remainingWords}  {totalMinutes}  {studentCount}
@@ -3124,18 +3168,18 @@ Quick announcement buttons  (shown in manual panel)
 
 ## 18.13 Edge Cases
 
-| Scenario | Handling |
-|---|---|
-| Two timers hit 10-min milestone on same tick | Both announcements are enqueued serially. GEOM 261 (higher student count, higher priority in sort) announces first. |
-| Timer is paused when milestone is reached | `checkAndFireAnnouncements` only runs when `status === 'Running'`. Paused timers do not trigger announcements. |
-| Timer is reset | All `hasBeenSpoken` flags reset to `false`. Announcements will fire again if the timer is restarted. |
-| Extra time added, crossing a milestone backwards | If extra time pushes `remainingSeconds` from 8 min back above 10 min, the 10-min announcement's `hasBeenSpoken` flag remains `true` and will NOT re-fire. This is intentional — re-firing would be confusing. Invigilator can manually announce if needed. |
-| Internet drops mid-session with OpenAI/ElevenLabs | The `isAvailable()` check fails. `getTTSProvider()` falls back to `WebSpeechTTSProvider` and a dismissible warning toast appears: "Internet lost — switched to system voice." |
-| OpenAI API key invalid or rate limited | Catch the HTTP error, show a toast, fall back to Web Speech for the remainder of the session. |
-| LLM generates an inappropriate message | The generated text is always shown for review before speaking. The invigilator can edit or discard it. LLM output is never auto-spoken. |
-| Announcement fires during Blackout Mode | Audio still plays (blackout is a visual overlay). The `AnnouncementToast` is visible on the invigilator's laptop (behind the blackout overlay is fine — the toast appears above it at a higher z-index on a different window area). |
-| Very short exam (< 5 minutes) | Announcements whose `triggerAtSeconds > durationSeconds` are silently skipped. No errors. |
-| `speechSynthesis` voices not loaded yet | Wrap voice list fetch in `speechSynthesis.onvoiceschanged` event. This is a known browser quirk — voices load asynchronously on first access. |
+| Scenario                                          | Handling                                                                                                                                                                                                                                                          |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Two timers hit 10-min milestone on same tick      | Both announcements are enqueued serially. GEOM 261 (higher student count, higher priority in sort) announces first.                                                                                                                                               |
+| Timer is paused when milestone is reached         | `checkAndFireAnnouncements` only runs when `status === 'Running'`. Paused timers do not trigger announcements.                                                                                                                                                |
+| Timer is reset                                    | All `hasBeenSpoken` flags reset to `false`. Announcements will fire again if the timer is restarted.                                                                                                                                                          |
+| Extra time added, crossing a milestone backwards  | If extra time pushes `remainingSeconds` from 8 min back above 10 min, the 10-min announcement's `hasBeenSpoken` flag remains `true` and will NOT re-fire. This is intentional — re-firing would be confusing. Invigilator can manually announce if needed. |
+| Internet drops mid-session with OpenAI/ElevenLabs | The `isAvailable()` check fails. `getTTSProvider()` falls back to `WebSpeechTTSProvider` and a dismissible warning toast appears: "Internet lost — switched to system voice."                                                                              |
+| OpenAI API key invalid or rate limited            | Catch the HTTP error, show a toast, fall back to Web Speech for the remainder of the session.                                                                                                                                                                     |
+| LLM generates an inappropriate message            | The generated text is always shown for review before speaking. The invigilator can edit or discard it. LLM output is never auto-spoken.                                                                                                                           |
+| Announcement fires during Blackout Mode           | Audio still plays (blackout is a visual overlay). The `AnnouncementToast` is visible on the invigilator's laptop (behind the blackout overlay is fine — the toast appears above it at a higher z-index on a different window area).                            |
+| Very short exam (< 5 minutes)                     | Announcements whose `triggerAtSeconds > durationSeconds` are silently skipped. No errors.                                                                                                                                                                       |
+| `speechSynthesis` voices not loaded yet         | Wrap voice list fetch in `speechSynthesis.onvoiceschanged` event. This is a known browser quirk — voices load asynchronously on first access.                                                                                                                  |
 
 ---
 
@@ -3172,15 +3216,15 @@ Insert these steps into **Phase 4** of the main spec's implementation order (aft
 
 ### Full Default Schedule
 
-| Trigger | Default Message Template |
-|---|---|
-| 60 min remaining | `{program}, you have one hour remaining.` |
-| 30 min remaining | `{program}, you have thirty minutes remaining.` |
-| 15 min remaining | `{program}, you have fifteen minutes remaining.` |
-| 10 min remaining | `{program}, you have ten minutes remaining. Please ensure your student ID is visible on your desk.` |
-| 5 min remaining | `{program}, you have five minutes remaining. Please put your scannables on top of your question papers.` |
-| 1 min remaining | `{program}, one minute remaining.` |
-| Time's up | `Time is up for {program}. Stop writing. Put your pens down. Do not turn your papers over.` |
+| Trigger          | Default Message Template                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| 60 min remaining | `{program}, you have one hour remaining.`                                                                |
+| 30 min remaining | `{program}, you have thirty minutes remaining.`                                                          |
+| 15 min remaining | `{program}, you have fifteen minutes remaining.`                                                         |
+| 10 min remaining | `{program}, you have ten minutes remaining. Please ensure your student ID is visible on your desk.`      |
+| 5 min remaining  | `{program}, you have five minutes remaining. Please put your scannables on top of your question papers.` |
+| 1 min remaining  | `{program}, one minute remaining.`                                                                       |
+| Time's up        | `Time is up for {program}. Stop writing. Put your pens down. Do not turn your papers over.`              |
 
 ### Additional Message Suggestions for Quick Buttons
 
