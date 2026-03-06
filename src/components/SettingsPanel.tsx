@@ -11,6 +11,8 @@ import { exists, mkdir } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import { check } from '@tauri-apps/plugin-updater';
 import { audioManager } from '../lib/audioManager';
+import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
+import type { ExamTimer } from '../lib/types';
 
 interface SettingsPanelProps {
     settings: AppSettings;
@@ -53,6 +55,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
     const [isUploading, setIsUploading] = useState(false);
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+    const [isEditingDefaultSchedule, setIsEditingDefaultSchedule] = useState(false);
 
     const handleCheckUpdate = async () => {
         try {
@@ -433,6 +436,15 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                             </button>
                         </div>
 
+                        <div className="mb-4">
+                            <button
+                                onClick={() => setIsEditingDefaultSchedule(true)}
+                                className="w-full py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Manage Default Schedule
+                            </button>
+                        </div>
+
                         {settings.announcementsEnabled && (
                             <div className="space-y-4 pl-2 border-l-2 border-gray-200 dark:border-gray-800">
                                 <div>
@@ -596,6 +608,35 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                     </div>
                 </div>
             </div>
+
+            {/* Default Schedule Editor Modal */}
+            {isEditingDefaultSchedule && (
+                <AnnouncementScheduleEditor
+                    timer={{
+                        // Dummy ExamTimer for preview purposes
+                        id: 'dummy-default',
+                        mode: 'exam',
+                        label: '[Dummy Label]',
+                        durationSeconds: 3600,
+                        remainingSeconds: 3600,
+                        status: 'Idle',
+                        isDismissed: false,
+                        fontSizeOverride: null,
+                        endTimeUnix: null,
+                        courseCode: '[Course Code]',
+                        courseTitle: '[Course Title]',
+                        program: '[Program]',
+                        studentCount: 0,
+                        announcementSchedule: settings.defaultAnnouncementSchedule,
+                    } as ExamTimer}
+                    settings={settings}
+                    onSave={(newSchedule) => {
+                        onUpdate({ defaultAnnouncementSchedule: newSchedule });
+                        setIsEditingDefaultSchedule(false);
+                    }}
+                    onClose={() => setIsEditingDefaultSchedule(false)}
+                />
+            )}
         </div>
     );
 }

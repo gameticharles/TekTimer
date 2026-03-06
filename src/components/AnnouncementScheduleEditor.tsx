@@ -121,7 +121,7 @@ export default function AnnouncementScheduleEditor({ timer, settings, onSave, on
 
                 {/* Variable Hints */}
                 <div className="px-6 py-3 bg-gray-900 border-t border-gray-800 text-xs text-gray-500 shrink-0">
-                    Variables: {'{program}'}, {'{courseCode}'}, {'{remainingMinutes}'}, {'{remainingWords}'}, {'{totalMinutes}'}, {'{studentCount}'}
+                    Variables: {'{program}'}, {'{courseCode}'}, {'{courseTitle}'}, {'{label}'}, {'{remainingMinutes}'}, {'{remainingSeconds}'}, {'{remainingWords}'}, {'{elapsedMinutes}'}, {'{totalMinutes}'}, {'{studentCount}'}
                 </div>
 
                 {/* Footer */}

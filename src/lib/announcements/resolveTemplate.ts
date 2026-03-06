@@ -18,6 +18,7 @@ export function resolveTemplate(
     const vars: Record<string, string> = {
         program: (timer as ExamTimer).program ?? timer.label ?? '',
         courseCode: (timer as ExamTimer).courseCode ?? '',
+        courseTitle: (timer as ExamTimer).courseTitle ?? '',
         label: timer.label ?? '',
         remainingMinutes: String(remainingMins),
         remainingSeconds: String(timer.remainingSeconds),
