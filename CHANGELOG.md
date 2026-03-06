@@ -1,6 +1,9 @@
 ## [0.4.1] - 2026-03-06
 
 added app details
+## [0.4.1] - 2026-03-06
+
+added app details
 ## [0.4.0] - 2026-03-06
 
 improved UI
@@ -46,6 +49,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
