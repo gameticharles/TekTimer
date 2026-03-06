@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Settings, Plus, Trash2, X, MapPin, Users, ClipboardList, CheckCircle2, Upload, Image, Save } from 'lucide-react';
+import { Settings, Plus, Trash2, X, MapPin, Users, ClipboardList, CheckCircle2, Upload, Image, Save, Calendar, ArrowUpDown } from 'lucide-react';
 import { open, ask } from '@tauri-apps/plugin-dialog';
 import type { TimerPreset, AppSettings, ExamTimer, QuizTimer, Venue, AnyTimer } from '../lib/types';
 import AddExamTimerModal from './AddExamTimerModal';
@@ -232,37 +232,61 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                 <div className="flex-1 flex min-h-0 overflow-hidden">
                     {/* Left Sidebar - Presets List */}
                     <div className="w-1/3 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-gray-800/50">
-                        <div className="p-4 shrink-0 border-b border-gray-200 dark:border-gray-800">
+                        <div className="p-4 shrink-0 border-b border-gray-200 dark:border-gray-800 space-y-3">
                             <button
                                 onClick={handleCreateNewPreset}
-                                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors"
+                                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
                             >
                                 <Plus size={16} /> Create Hall Preset
                             </button>
+                            <div className="flex items-center justify-between px-1">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Manage Presets</span>
+                                <button
+                                    onClick={() => onUpdate({ presetSortOrder: settings.presetSortOrder === 'date' ? 'manual' : 'date' })}
+                                    className={`p-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-tight ${settings.presetSortOrder === 'date' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                    title={settings.presetSortOrder === 'date' ? "Sorting by Date/Time" : "Manual Order"}
+                                >
+                                    {settings.presetSortOrder === 'date' ? <Calendar size={12} /> : <ArrowUpDown size={12} />}
+                                    {settings.presetSortOrder === 'date' ? 'By Date' : 'Manual'}
+                                </button>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            {presets.map(preset => (
-                                <div
-                                    key={preset.id}
-                                    className={`group flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${editingPresetId === preset.id ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 text-emerald-900 dark:text-emerald-100' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
-                                    onClick={() => setEditingPresetId(preset.id)}
-                                >
-                                    <div className="flex-1 min-w-0 pr-2">
-                                        <div className="font-semibold truncate">{preset.name}</div>
-                                        <div className="text-xs opacity-70 mt-0.5 pb-1">
-                                            {preset.session ? `${preset.session} • ` : ''}
-                                            {preset.scheduledStartTime ? `${preset.scheduledStartTime} • ` : ''}
-                                            {preset.timers.length} timers
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleDeletePreset(preset.id); }}
-                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                            {(() => {
+                                let sorted = [...presets];
+                                if (settings.presetSortOrder === 'date') {
+                                    sorted.sort((a, b) => {
+                                        const dateA = a.scheduledDate || '9999-99-99';
+                                        const dateB = b.scheduledDate || '9999-99-99';
+                                        if (dateA !== dateB) return dateA.localeCompare(dateB);
+                                        const timeA = a.scheduledStartTime || '23:59';
+                                        const timeB = b.scheduledStartTime || '23:59';
+                                        return timeA.localeCompare(timeB);
+                                    });
+                                }
+                                return sorted.map(preset => (
+                                    <div
+                                        key={preset.id}
+                                        className={`group flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${editingPresetId === preset.id ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 text-emerald-900 dark:text-emerald-100' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                                        onClick={() => setEditingPresetId(preset.id)}
                                     >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            ))}
+                                        <div className="flex-1 min-w-0 pr-2">
+                                            <div className="font-semibold truncate">{preset.name}</div>
+                                            <div className="text-xs opacity-70 mt-0.5 pb-1">
+                                                {preset.session ? `${preset.session} • ` : ''}
+                                                {preset.scheduledStartTime ? `${preset.scheduledStartTime} • ` : ''}
+                                                {preset.timers.length} timers
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeletePreset(preset.id); }}
+                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ));
+                            })()}
                             {presets.length === 0 && (
                                 <div className="text-center text-gray-500 dark:text-gray-400 text-sm mt-8">
                                     No hall presets yet.

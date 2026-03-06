@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { load } from '@tauri-apps/plugin-store';
@@ -18,6 +18,11 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
     }, [settings]);
     const [timers, setTimers] = useState<AnyTimer[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
+    const timersRef = useRef<AnyTimer[]>([]);
+
+    useEffect(() => {
+        timersRef.current = timers;
+    }, [timers]);
 
     // Initial load
     useEffect(() => {
@@ -28,6 +33,11 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                 if (saved && Array.isArray(saved) && saved.length > 0) {
                     await invoke('sync_timers', { timers: saved });
                     setTimers(saved);
+                    // Log session restoration if there are active timers
+                    const hasActive = saved.some(t => t.status === 'Running' || t.status === 'Paused');
+                    if (hasActive && onLog) {
+                        onLog('SYSTEM', 'Active monitoring session restored from backup.');
+                    }
                 }
             } catch (err) {
                 console.error('Failed to load timers:', err);
@@ -40,6 +50,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
     // Save on change (debounced)
     useEffect(() => {
         if (!isLoaded) return;
+        // Reduce debounce to 500ms to ensure it can fire between 1s (or 500ms) ticks
         const timeoutId = setTimeout(async () => {
             try {
                 const store = await load(TIMERS_STORE_PATH);
@@ -48,9 +59,26 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
             } catch (err) {
                 console.error('Failed to save timers:', err);
             }
-        }, 1000);
+        }, 500);
         return () => clearTimeout(timeoutId);
     }, [timers, isLoaded]);
+
+    // Explicit Heartbeat Save (every 10 seconds)
+    // We use a separate effect without [timers] dependency to ensure the interval isn't reset every 500ms tick
+    useEffect(() => {
+        if (!isLoaded) return;
+        const intervalId = setInterval(async () => {
+            try {
+                const store = await load(TIMERS_STORE_PATH);
+                await store.set('timers', timersRef.current);
+                await store.save();
+                // console.log('Heartbeat save completed');
+            } catch (err) {
+                console.error('Heartbeat save failed:', err);
+            }
+        }, 10000);
+        return () => clearInterval(intervalId);
+    }, [isLoaded]); // Only depend on isLoaded
 
     // Listen for tick events from Rust backend
     useEffect(() => {

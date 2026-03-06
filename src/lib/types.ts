@@ -136,6 +136,7 @@ export interface AppSettings {
     savedPresets: TimerPreset[]; // Saved configurations for halls
     savedCourses: Course[]; // For auto-fill
     savedVenues: Venue[]; // Persistent hall database
+    presetSortOrder: 'manual' | 'date'; // User preference for sorting presets
 }
 
 import { DEFAULT_ANNOUNCEMENT_SCHEDULE } from './announcements/defaultSchedule';
@@ -353,5 +354,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
         { id: 'v-audit1', name: 'HA-AUDIT', capacity: 600, description: 'Main Auditorium' },
         { id: 'v-audit2', name: 'HA-AUDIT 2', capacity: 500, description: 'Secondary Auditorium' },
         { id: 'v-elab', name: 'E-LAB', capacity: 60, description: 'Engineering Computer Lab' }
-    ]
+    ],
+    presetSortOrder: 'manual'
 };
