@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import HomeScreen from './screens/HomeScreen';
 import QuizScreen from './screens/QuizScreen';
 import ExamScreen from './screens/ExamScreen';
 import ProctorDashboard from './screens/ProctorDashboard';
@@ -11,7 +10,7 @@ import { useTimerStore } from './hooks/useTimerStore';
 import type { AppMode } from './lib/types';
 
 export default function App() {
-  const [mode, setMode] = useState<AppMode>('home');
+  const [mode, setMode] = useState<AppMode>('proctor');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const { settings, updateSettings, resetSettings, loaded } = useSettings();
@@ -59,19 +58,12 @@ export default function App() {
       )}
 
       {/* Mode Router */}
-      {mode === 'home' && (
-        <HomeScreen
-          onSelect={setMode}
-          onSettings={() => setSettingsOpen(true)}
-        />
-      )}
-
       {mode === 'quiz' && (
         <QuizScreen
           settings={settings}
           onUpdateSettings={updateSettings}
           store={store}
-          onExit={() => setMode('home')}
+          onExit={() => setMode('proctor')}
           onSettings={() => setSettingsOpen(true)}
         />
       )}
@@ -83,12 +75,8 @@ export default function App() {
           store={store}
           groupId={activeGroupId ?? undefined}
           onExit={() => {
-            if (activeGroupId) {
-              setActiveGroupId(null);
-              setMode('proctor');
-            } else {
-              setMode('home');
-            }
+            setActiveGroupId(null);
+            setMode('proctor');
           }}
           onSettings={() => setSettingsOpen(true)}
         />
@@ -99,12 +87,16 @@ export default function App() {
           settings={settings}
           onUpdateSettings={updateSettings}
           store={store}
-          onExit={() => setMode('home')}
           onSettings={() => setSettingsOpen(true)}
           onOpenGroup={(groupId) => {
             setActiveGroupId(groupId);
             setMode('exam');
           }}
+          onOpenExam={() => {
+            setActiveGroupId(null);
+            setMode('exam');
+          }}
+          onOpenQuiz={() => setMode('quiz')}
         />
       )}
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Play, Pause, Settings, ChevronLeft, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2 } from 'lucide-react';
+import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList } from 'lucide-react';
 import type { AppSettings, AnyTimer, TimerPreset } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
@@ -8,13 +8,14 @@ import PresetManager from '../components/PresetManager';
 interface Props {
     settings: AppSettings;
     onUpdateSettings: (patch: Partial<AppSettings>) => void;
-    onExit: () => void;
     onSettings: () => void;
     onOpenGroup: (groupId: string) => void;
+    onOpenExam: () => void;
+    onOpenQuiz: () => void;
     store: TimerStore;
 }
 
-export default function ProctorDashboard({ settings, onUpdateSettings, onExit, onSettings, onOpenGroup, store }: Props) {
+export default function ProctorDashboard({ settings, onUpdateSettings, onSettings, onOpenGroup, onOpenExam, onOpenQuiz, store }: Props) {
     const { timers, createGroupFromPreset, startGroup, pauseGroup, addExtraTimeGroup, removeGroup, startTimer, pauseTimer, resetTimer, addExtraTime, deleteTimer } = store;
     const { logs, addLog } = useProctorStore();
 
@@ -106,19 +107,56 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
         });
     }, [timers, settings.warningThresholdSeconds]);
 
+    // Ungrouped timers (standalone exam/quiz timers)
+    const ungroupedTimers = useMemo(() => {
+        return timers.filter(t => !t.groupId);
+    }, [timers]);
+
+    // Build a virtual group for ungrouped timers so they show in the monitoring table
+    const ungroupedGroup = useMemo(() => {
+        if (ungroupedTimers.length === 0) return null;
+        const running = ungroupedTimers.filter(t => t.status === 'Running').length;
+        const ended = ungroupedTimers.filter(t => t.status === 'Ended').length;
+        const paused = ungroupedTimers.filter(t => t.status === 'Paused').length;
+        let status = 'SCHEDULED';
+        if (running > 0) status = 'RUNNING';
+        else if (ended === ungroupedTimers.length) status = 'ENDED';
+        else if (paused > 0) status = 'PAUSED';
+        const inWarning = ungroupedTimers.some(t => t.remainingSeconds <= settings.warningThresholdSeconds && t.remainingSeconds > 0 && t.status !== 'Ended');
+        if (running > 0 && inWarning) status = 'WARNING';
+        const totalDuration = ungroupedTimers.reduce((acc, t) => acc + t.durationSeconds, 0);
+        const totalRemaining = ungroupedTimers.reduce((acc, t) => acc + t.remainingSeconds, 0);
+        const progress = totalDuration > 0 ? ((totalDuration - totalRemaining) / totalDuration) * 100 : 0;
+        return {
+            id: '__standalone__',
+            name: 'Standalone Timers',
+            timers: ungroupedTimers,
+            status,
+            progress,
+            mainTimer: ungroupedTimers[0] || null
+        };
+    }, [ungroupedTimers, settings.warningThresholdSeconds]);
+
+    // Combine groups + ungrouped for display
+    const allGroups = useMemo(() => {
+        const result = [...groups];
+        if (ungroupedGroup) result.push(ungroupedGroup);
+        return result;
+    }, [groups, ungroupedGroup]);
+
     // Derived Metrics
     const metrics = useMemo(() => {
         return {
-            running: groups.filter(g => g.status === 'RUNNING').length,
-            warning: groups.filter(g => g.status === 'WARNING').length,
-            ended: groups.filter(g => g.status === 'ENDED').length,
-            scheduled: groups.filter(g => g.status === 'SCHEDULED' || g.status === 'PAUSED').length,
-            avgProgress: groups.length > 0 ? groups.reduce((acc, g) => acc + g.progress, 0) / groups.length : 0,
-            totalStudents: groups.reduce((acc, g) => acc + g.timers.reduce((s, t) => s + (t.mode === 'exam' ? t.studentCount : 0), 0), 0)
+            running: allGroups.filter(g => g.status === 'RUNNING').length,
+            warning: allGroups.filter(g => g.status === 'WARNING').length,
+            ended: allGroups.filter(g => g.status === 'ENDED').length,
+            scheduled: allGroups.filter(g => g.status === 'SCHEDULED' || g.status === 'PAUSED').length,
+            avgProgress: allGroups.length > 0 ? allGroups.reduce((acc, g) => acc + g.progress, 0) / allGroups.length : 0,
+            totalStudents: allGroups.reduce((acc, g) => acc + g.timers.reduce((s, t) => s + (t.mode === 'exam' ? t.studentCount : 0), 0), 0)
         };
-    }, [groups]);
+    }, [allGroups]);
 
-    const filteredGroups = groups.filter(g =>
+    const filteredGroups = allGroups.filter(g =>
         g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         g.timers.some(t => t.label.toLowerCase().includes(searchQuery.toLowerCase()))
     );
@@ -159,11 +197,8 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
     return (
         <div className="h-screen w-screen bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white flex flex-col font-sans overflow-hidden transition-colors">
             {/* Top Navigation Bar */}
-            <div className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] flex items-center justify-between px-6 shrink-0 transition-colors">
+            <div data-tauri-drag-region className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] flex items-center justify-between px-6 shrink-0 transition-colors">
                 <div className="flex items-center gap-4">
-                    <button onClick={onExit} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                        <ChevronLeft size={20} />
-                    </button>
                     <div>
                         <h1 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                             <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center">
@@ -172,9 +207,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                                     <div className="bg-white/50 rounded-sm"></div><div className="bg-white rounded-sm"></div>
                                 </span>
                             </div>
-                            Proctor Dashboard
+                            Exam Dashboard
                         </h1>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold tracking-widest uppercase">Multi-Hall Administrator View</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold tracking-widest uppercase">Timer Management &amp; Monitoring</p>
                     </div>
                 </div>
 
@@ -184,23 +219,27 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                         <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{metrics.avgProgress.toFixed(1)}%</span>
                     </div>
                     <div className="text-right flex flex-col items-center">
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Active Exams</span>
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">{groups.length} Halls</span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Active</span>
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">{allGroups.length} Groups</span>
                     </div>
                     <div className="text-right flex flex-col items-center">
                         <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Total Students</span>
                         <span className="text-lg font-bold text-gray-900 dark:text-white">{metrics.totalStudents.toLocaleString()}</span>
                     </div>
 
-                    <div className="flex items-center gap-3 border-l border-gray-200 dark:border-gray-700 pl-6 ml-2">
+                    <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-6 ml-2">
+                        <button onClick={onOpenExam} className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm font-medium transition-colors" title="Start new exam session">
+                            <BookOpen size={16} /> New Exam
+                        </button>
+                        <button onClick={onOpenQuiz} className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 border border-amber-200 dark:border-amber-500/20 rounded-lg text-sm font-medium transition-colors" title="Start a quick timer">
+                            <ClipboardList size={16} /> Quick Timer
+                        </button>
+                        <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
                         <button onClick={() => setShowPresets(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Manage Presets">
                             <FolderPlus size={20} />
                         </button>
-                        <button onClick={onSettings} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                        <button onClick={onSettings} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Settings">
                             <Settings size={20} />
-                        </button>
-                        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-blue-500/20">
-                            Generate Report
                         </button>
                     </div>
                 </div>
@@ -220,7 +259,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.running.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-emerald-500" style={{ width: `${(metrics.running / Math.max(1, groups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-emerald-500" style={{ width: `${(metrics.running / Math.max(1, allGroups.length)) * 100}%` }}></div>
                             </div>
                         </div>
 
@@ -232,7 +271,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.warning.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-amber-500" style={{ width: `${(metrics.warning / Math.max(1, groups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-amber-500" style={{ width: `${(metrics.warning / Math.max(1, allGroups.length)) * 100}%` }}></div>
                             </div>
                         </div>
 
@@ -244,7 +283,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.ended.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-red-500" style={{ width: `${(metrics.ended / Math.max(1, groups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-red-500" style={{ width: `${(metrics.ended / Math.max(1, allGroups.length)) * 100}%` }}></div>
                             </div>
                         </div>
 
@@ -256,7 +295,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.scheduled.toString().padStart(2, '0')}</div>
                             <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
-                                <div className="h-full bg-gray-400 dark:bg-gray-500" style={{ width: `${(metrics.scheduled / Math.max(1, groups.length)) * 100}%` }}></div>
+                                <div className="h-full bg-gray-400 dark:bg-gray-500" style={{ width: `${(metrics.scheduled / Math.max(1, allGroups.length)) * 100}%` }}></div>
                             </div>
                         </div>
                     </div>
@@ -264,7 +303,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                     {/* Active Hall Monitoring List */}
                     <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl flex-1 flex flex-col min-h-0 shadow-sm dark:shadow-none transition-colors">
                         <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-                            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Active Hall Monitoring</h2>
+                            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Active Monitoring</h2>
 
                             <div className="flex items-center gap-3">
                                 <div className="relative">
@@ -304,7 +343,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                                     {/* Col 1: Lecture Hall Info & Global Actions */}
                                     <div className="col-span-1 pr-4">
                                         <button
-                                            onClick={() => onOpenGroup(group.id)}
+                                            onClick={() => group.id === '__standalone__' ? onOpenExam() : onOpenGroup(group.id)}
                                             className="text-left hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                             title="Open in Exam View"
                                         >
@@ -483,10 +522,18 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onExit, o
                             {filteredGroups.length === 0 && (
                                 <div className="p-12 text-center text-gray-400 dark:text-gray-500 flex flex-col items-center">
                                     <Search size={32} className="mb-4 opacity-50" />
-                                    <p className="text-sm">No active halls match your filter.</p>
-                                    <button onClick={() => setShowPresetSelection(true)} className="mt-4 text-blue-500 dark:text-blue-400 hover:underline text-sm font-medium">
-                                        Launch a new Hall Preset
-                                    </button>
+                                    <p className="text-sm mb-4">No active timers. Get started!</p>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setShowPresetSelection(true)} className="px-4 py-2 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm font-medium transition-colors">
+                                            Launch Hall Preset
+                                        </button>
+                                        <button onClick={onOpenExam} className="px-4 py-2 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm font-medium transition-colors">
+                                            New Exam Session
+                                        </button>
+                                        <button onClick={onOpenQuiz} className="px-4 py-2 text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg text-sm font-medium transition-colors">
+                                            Quick Timer
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
