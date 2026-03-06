@@ -40,7 +40,7 @@ export interface TimerPreset {
 export interface ExamLogEntry {
     id: string;
     timestamp: number;
-    type: 'STARTED' | 'WARNING' | 'ENDED' | 'SYSTEM' | 'INFO';
+    type: 'STARTED' | 'PAUSED' | 'WARNING' | 'ENDED' | 'ANNOUNCEMENT' | 'RESET' | 'SYSTEM' | 'INFO';
     message: string;
     timerId?: string;
     groupId?: string;

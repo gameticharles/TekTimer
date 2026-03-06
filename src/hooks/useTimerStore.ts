@@ -2,14 +2,17 @@ import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { load } from '@tauri-apps/plugin-store';
-import type { AnyTimer, QuizTimer, ExamTimer, TimerTickPayload, AppSettings, TimerStatus } from '../lib/types';
+import type { AnyTimer, QuizTimer, ExamTimer, TimerTickPayload, AppSettings, TimerStatus, ExamLogEntry } from '../lib/types';
 import { SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 import { announcementQueue, resolveTemplate, enhanceWithLLM } from '../lib/announcements';
 import { audioManager } from '../lib/audioManager';
 
 const TIMERS_STORE_PATH = 'timers.json';
 
-export function useTimerStore(settings: AppSettings) {
+export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry['type'], message: string, timerId?: string, groupId?: string) => void) {
+    const getTimerDisplayName = (t: AnyTimer) => {
+        return t.mode === 'exam' ? t.courseCode : t.label;
+    };
     useEffect(() => {
         announcementQueue.setSettings(settings);
     }, [settings]);
@@ -66,6 +69,15 @@ export function useTimerStore(settings: AppSettings) {
                     };
 
                     const justEnded = t.status === 'Running' && payload.status === 'Ended';
+                    const justEnteredWarning = t.remainingSeconds > settings.warningThresholdSeconds && payload.remaining_seconds <= settings.warningThresholdSeconds && payload.status === 'Running';
+
+                    if (justEnded) {
+                        onLog?.('ENDED', `${getTimerDisplayName(t)}: Time up`, t.id, t.groupId);
+                    }
+
+                    if (justEnteredWarning) {
+                        onLog?.('WARNING', `${getTimerDisplayName(t)}: Entered warning period`, t.id, t.groupId);
+                    }
 
                     // 5-second countdown beeps
                     if (settings.soundEnabled && payload.status === 'Running' && payload.remaining_seconds <= 5 && payload.remaining_seconds > 0) {
@@ -104,6 +116,7 @@ export function useTimerStore(settings: AppSettings) {
                                         text: finalText,
                                         priority: entry.triggerAtSeconds === 0 ? 1 : 2,
                                     });
+                                    onLog?.('ANNOUNCEMENT', `${getTimerDisplayName(updated)}: ${finalText}`, updated.id, updated.groupId);
                                 })();
 
                                 return { ...entry, hasBeenSpoken: true };
@@ -304,19 +317,25 @@ export function useTimerStore(settings: AppSettings) {
             setTimers(prev => prev.map(t => newTimers.find(nt => nt.id === t.id) ? { ...t, status: 'Running' } : t));
         }
 
+        onLog?.('SYSTEM', `Administrator loaded preset ${preset.name}`, undefined, groupId);
         return groupId;
-    }, []);
+    }, [onLog, settings]);
 
     // ── Timer Actions ─────────────────────────────────────────────────
 
     const startTimer = useCallback(async (id: string) => {
+        const timer = timers.find(t => t.id === id);
         await invoke('start_timer', { id });
         setTimers((prev) =>
             prev.map((t) => (t.id === id ? { ...t, status: 'Running' as const } : t)),
         );
-    }, []);
+        if (timer) {
+            onLog?.('STARTED', `${getTimerDisplayName(timer)}: Started`, timer.id, timer.groupId);
+        }
+    }, [timers, onLog]);
 
     const pauseTimer = useCallback(async (id: string) => {
+        const timer = timers.find(t => t.id === id);
         const result = await invoke<{ remaining_seconds: number }>('pause_timer', { id });
         setTimers((prev) =>
             prev.map((t) =>
@@ -325,9 +344,13 @@ export function useTimerStore(settings: AppSettings) {
                     : t,
             ),
         );
-    }, []);
+        if (timer) {
+            onLog?.('PAUSED', `${getTimerDisplayName(timer)}: Paused`, timer.id, timer.groupId);
+        }
+    }, [timers, onLog]);
 
     const resetTimer = useCallback(async (id: string) => {
+        const timer = timers.find(t => t.id === id);
         await invoke('reset_timer', { id });
         setTimers((prev) =>
             prev.map((t) =>
@@ -342,12 +365,19 @@ export function useTimerStore(settings: AppSettings) {
                     : t,
             ),
         );
-    }, []);
+        if (timer) {
+            onLog?.('RESET', `${getTimerDisplayName(timer)}: Reset`, timer.id, timer.groupId);
+        }
+    }, [timers, onLog]);
 
     const deleteTimer = useCallback(async (id: string) => {
+        const timer = timers.find(t => t.id === id);
         await invoke('delete_timer', { id });
+        if (timer) {
+            onLog?.('SYSTEM', `Deleted Timer: ${getTimerDisplayName(timer)}`, undefined, timer.groupId);
+        }
         setTimers((prev) => prev.filter((t) => t.id !== id));
-    }, []);
+    }, [timers, onLog]);
 
     const reorderTimers = useCallback((sourceId: string, destId: string) => {
         setTimers((prev) => {
@@ -371,6 +401,7 @@ export function useTimerStore(settings: AppSettings) {
     // ── Extra Time ────────────────────────────────────────────────────
 
     const addExtraTime = useCallback(async (id: string, extraSeconds: number) => {
+        const timer = timers.find(t => t.id === id);
         await invoke('add_extra_time', { id, extraSeconds });
         setTimers((prev) =>
             prev.map((t) => {
@@ -384,7 +415,10 @@ export function useTimerStore(settings: AppSettings) {
                 };
             }),
         );
-    }, []);
+        if (timer) {
+            onLog?.('SYSTEM', `Added ${Math.floor(extraSeconds / 60)}m to Timer: ${getTimerDisplayName(timer)}`, timer.id, timer.groupId);
+        }
+    }, [timers, onLog]);
 
     // ── Pause / Resume All ────────────────────────────────────────────
 
@@ -416,7 +450,8 @@ export function useTimerStore(settings: AppSettings) {
         setTimers((prev) =>
             prev.map((t) => (t.groupId === groupId && t.status !== 'Running' && t.status !== 'Ended' ? { ...t, status: 'Running' as const } : t)),
         );
-    }, [timers]);
+        onLog?.('STARTED', `Started Hall Session`, undefined, groupId);
+    }, [timers, onLog]);
 
     const pauseGroup = useCallback(async (groupId: string) => {
         const groupTimers = timers.filter(t => t.groupId === groupId && t.status === 'Running');
@@ -430,7 +465,8 @@ export function useTimerStore(settings: AppSettings) {
                 ),
             );
         }
-    }, [timers]);
+        onLog?.('PAUSED', `Paused Hall Session`, undefined, groupId);
+    }, [timers, onLog]);
 
     const addExtraTimeGroup = useCallback(async (groupId: string, extraSeconds: number) => {
         const groupTimers = timers.filter(t => t.groupId === groupId);
@@ -449,15 +485,17 @@ export function useTimerStore(settings: AppSettings) {
                 };
             }),
         );
-    }, [timers]);
+        onLog?.('SYSTEM', `Added ${Math.floor(extraSeconds / 60)}m to Hall Session`, undefined, groupId);
+    }, [timers, onLog]);
 
     const removeGroup = useCallback(async (groupId: string) => {
         const groupTimers = timers.filter(t => t.groupId === groupId);
         for (const t of groupTimers) {
             await invoke('delete_timer', { id: t.id });
         }
+        onLog?.('SYSTEM', `Removed Hall from monitoring`, undefined, groupId);
         setTimers((prev) => prev.filter(t => t.groupId !== groupId));
-    }, [timers]);
+    }, [timers, onLog]);
 
     // ── Announcements ─────────────────────────────────────────────────
 

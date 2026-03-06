@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList } from 'lucide-react';
-import type { AppSettings, AnyTimer, TimerPreset } from '../lib/types';
+import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
 import PresetManager from '../components/PresetManager';
@@ -14,11 +14,13 @@ interface Props {
     onOpenQuiz: () => void;
     onOpenQuizTimer: (timerId: string) => void;
     store: TimerStore;
+    logs: ExamLogEntry[];
+    onClearLogs: () => void;
 }
 
-export default function ProctorDashboard({ settings, onUpdateSettings, onSettings, onOpenGroup, onOpenExam, onOpenQuiz, onOpenQuizTimer, store }: Props) {
+export default function ProctorDashboard({ settings, onUpdateSettings, onSettings, onOpenGroup, onOpenExam, onOpenQuiz, onOpenQuizTimer, store, logs, onClearLogs }: Props) {
     const { timers, createGroupFromPreset, startGroup, pauseGroup, addExtraTimeGroup, removeGroup, startTimer, pauseTimer, resetTimer, addExtraTime, deleteTimer } = store;
-    const { logs, addLog } = useProctorStore();
+    const { addLog } = useProctorStore(); // Keep addLog for some local UI events if needed, but we'll use it less
 
     const [showPresets, setShowPresets] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -379,11 +381,11 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                         {/* Group actions underneath name */}
                                         <div className="mt-3 flex items-center gap-1">
                                             {group.status === 'SCHEDULED' || group.status === 'PAUSED' ? (
-                                                <button onClick={() => { startGroup(group.id); addLog('SYSTEM', `Started Hall: ${group.name}`, undefined, group.id); }} className="px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded text-[10px] font-bold uppercase transition-colors" title="Start All">
+                                                <button onClick={() => { startGroup(group.id); }} className="px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded text-[10px] font-bold uppercase transition-colors" title="Start All">
                                                     Start All
                                                 </button>
                                             ) : (group.status === 'RUNNING' || group.status === 'WARNING') && (
-                                                <button onClick={() => { pauseGroup(group.id); addLog('SYSTEM', `Paused Hall: ${group.name}`, undefined, group.id); }} className="px-2 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded text-[10px] font-bold uppercase transition-colors" title="Pause All">
+                                                <button onClick={() => { pauseGroup(group.id); }} className="px-2 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded text-[10px] font-bold uppercase transition-colors" title="Pause All">
                                                     Pause All
                                                 </button>
                                             )}
@@ -498,17 +500,17 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                     {/* Individual Timer Actions */}
                                                     <div className="col-span-1 flex justify-end gap-1 relative">
                                                         {timer.status === 'Idle' || timer.status === 'Paused' ? (
-                                                            <button onClick={() => { startTimer(timer.id); addLog('SYSTEM', `Started Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 rounded transition-colors" title="Start">
+                                                            <button onClick={() => { startTimer(timer.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 rounded transition-colors" title="Start">
                                                                 <Play size={14} />
                                                             </button>
                                                         ) : timer.status === 'Running' ? (
-                                                            <button onClick={() => { pauseTimer(timer.id); addLog('SYSTEM', `Paused Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 rounded transition-colors" title="Pause">
+                                                            <button onClick={() => { pauseTimer(timer.id); }} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 rounded transition-colors" title="Pause">
                                                                 <Pause size={14} />
                                                             </button>
                                                         ) : null}
 
                                                         <button
-                                                            onClick={() => { resetTimer(timer.id); addLog('SYSTEM', `Reset Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); }}
+                                                            onClick={() => { resetTimer(timer.id); }}
                                                             className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 rounded transition-colors" title="Reset">
                                                             <RotateCcw size={14} />
                                                         </button>
@@ -525,14 +527,13 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                         {/* Timer Dropdown Menu */}
                                                         {activeDropdownId === timer.id && (
                                                             <div className="absolute right-0 top-8 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
-                                                                <button onClick={() => { addExtraTime(timer.id, 300); addLog('SYSTEM', `Added 5m to Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id); setActiveDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2">
+                                                                <button onClick={() => { addExtraTime(timer.id, 300); setActiveDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2">
                                                                     <Clock size={14} className="text-blue-500" /> Add 5 Minutes
                                                                 </button>
                                                                 <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
                                                                 <button onClick={() => {
                                                                     if (confirm(`Are you sure you want to delete this timer?`)) {
                                                                         deleteTimer(timer.id);
-                                                                        addLog('SYSTEM', `Deleted Timer: ${timer.mode === 'exam' ? timer.courseCode : timer.label}`, undefined, group.id);
                                                                         setActiveDropdownId(null);
                                                                     }
                                                                 }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 font-medium">
@@ -573,8 +574,14 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <span>Exam Log</span>
-                            <span className="px-1.5 py-0.5 rounded text-[8px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold border border-gray-200 dark:border-gray-700">Real-Time</span>
+                            <span className="px-1.5 py-0.5 rounded text-[8px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 uppercase tracking-widest font-bold border border-blue-100 dark:border-blue-500/20">Live</span>
                         </h3>
+                        <button
+                            onClick={onClearLogs}
+                            className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors uppercase tracking-tight"
+                        >
+                            Clear
+                        </button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 relative">
@@ -583,33 +590,41 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
                         <div className="space-y-6 relative">
                             {logs.map((log) => {
+                                const relatedTimer = store.timers.find(t => t.id === log.timerId);
                                 const renderDot = () => {
-                                    if (log.type === 'STARTED') return <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
-                                    if (log.type === 'ENDED') return <div className="w-2.5 h-2.5 rounded-full bg-red-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
-                                    if (log.type === 'WARNING') return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
-                                    if (log.type === 'SYSTEM') return <div className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
-                                    return <div className="w-2.5 h-2.5 rounded-full bg-gray-400 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'STARTED') return <div className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'PAUSED') return <div className="w-2 h-2 rounded-full bg-amber-400 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'RESET') return <div className="w-2 h-2 rounded-full bg-blue-400 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'ENDED') return <div className="w-2 h-2 rounded-full bg-red-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'WARNING') return <div className="w-2 h-2 rounded-full bg-amber-600 animate-pulse ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'ANNOUNCEMENT') return <div className="w-2 h-2 rounded-full bg-indigo-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    if (log.type === 'SYSTEM') return <div className="w-2 h-2 rounded-full bg-gray-500 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
+                                    return <div className="w-2 h-2 rounded-full bg-gray-400 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
                                 };
 
+                                // Try to find Identifier (Course Code or Label)
+                                let identifier = '';
+                                if (relatedTimer) {
+                                    identifier = relatedTimer.mode === 'exam' ? relatedTimer.courseCode : relatedTimer.label;
+                                }
+
                                 return (
-                                    <div key={log.id} className="flex gap-4 group">
-                                        <div className="pt-1">{renderDot()}</div>
+                                    <div key={log.id} className="flex gap-3 group animate-in fade-in slide-in-from-right-1 duration-300">
+                                        <div className="pt-1.5">{renderDot()}</div>
                                         <div className="flex-1">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="text-[10px] text-gray-500 font-mono">
-                                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            <div className="flex justify-between items-start mb-0.5">
+                                                <span className="text-[9px] text-gray-400 font-mono">
+                                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                                 </span>
-                                                <span className={`text-[9px] font-bold uppercase tracking-widest ${log.type === 'STARTED' ? 'text-emerald-600 dark:text-emerald-500/70' :
-                                                    log.type === 'WARNING' ? 'text-amber-600 dark:text-amber-500/70' :
-                                                        log.type === 'ENDED' ? 'text-red-600 dark:text-red-500/70' :
-                                                            'text-gray-500 dark:text-gray-500/70'
-                                                    }`}>
-                                                    {log.type}
-                                                </span>
+                                                {identifier && (
+                                                    <span className={`text-[8px] font-bold px-1 rounded uppercase tracking-tighter ${relatedTimer?.mode === 'exam' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
+                                                        {identifier}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                                                {log.message}
-                                            </p>
+                                            <div className={`text-[11px] leading-snug ${log.type === 'ANNOUNCEMENT' ? 'text-indigo-600 dark:text-indigo-400 font-medium italic' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                {log.message.includes(':') ? log.message.split(':').slice(1).join(':').trim() : log.message}
+                                            </div>
                                         </div>
                                     </div>
                                 );

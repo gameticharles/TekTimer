@@ -7,6 +7,7 @@ import AnnouncementStatusBar from './components/AnnouncementStatusBar';
 import AnnouncementToast from './components/AnnouncementToast';
 import { useSettings } from './hooks/useSettings';
 import { useTimerStore } from './hooks/useTimerStore';
+import { useProctorStore } from './hooks/useProctorStore';
 import type { AppMode } from './lib/types';
 
 export default function App() {
@@ -15,7 +16,8 @@ export default function App() {
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
   const { settings, updateSettings, resetSettings, loaded } = useSettings();
-  const store = useTimerStore(settings);
+  const { logs, addLog, clearLogs } = useProctorStore();
+  const store = useTimerStore(settings, addLog);
 
   useEffect(() => {
     if (!loaded) return;
@@ -92,6 +94,8 @@ export default function App() {
           settings={settings}
           onUpdateSettings={updateSettings}
           store={store}
+          logs={logs}
+          onClearLogs={clearLogs}
           onSettings={() => setSettingsOpen(true)}
           onOpenGroup={(groupId) => {
             setActiveGroupId(groupId);
