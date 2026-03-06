@@ -27,7 +27,7 @@ interface ExamScreenProps {
     store: TimerStore;
 }
 
-export default function ExamScreen({ settings, onExit, onSettings, groupId, store }: ExamScreenProps) {
+export default function ExamScreen({ settings, onUpdateSettings, onExit, onSettings, groupId, store }: ExamScreenProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editTimerId, setEditTimerId] = useState<string | null>(null);
     const [extraTimeTimerId, setExtraTimeTimerId] = useState<string | null>(null);
@@ -89,9 +89,23 @@ export default function ExamScreen({ settings, onExit, onSettings, groupId, stor
 
     const handleAddTimer = useCallback(
         async (courseCode: string, courseTitle: string | undefined, program: string, studentCount: number, durationSeconds: number) => {
+            // Auto-save new course if it doesn't exist
+            const isNewCourse = !settings.savedCourses.some(c => c.code === courseCode);
+            if (isNewCourse) {
+                const levelMatch = courseCode.match(/\d{3}/);
+                const yearLevel = levelMatch ? parseInt(levelMatch[0][0]) : 1;
+                const newCourse = {
+                    code: courseCode,
+                    title: courseTitle || '',
+                    program: program,
+                    yearLevel,
+                    recommendedStudentCount: studentCount
+                };
+                onUpdateSettings({ savedCourses: [...settings.savedCourses, newCourse] });
+            }
             await store.createExamTimer(courseCode, courseTitle, program, studentCount, durationSeconds, groupId);
         },
-        [store, groupId],
+        [store, groupId, settings.savedCourses, onUpdateSettings],
     );
 
     // ── Drag & Drop ───────────────────────────────────────────────────
@@ -141,6 +155,7 @@ export default function ExamScreen({ settings, onExit, onSettings, groupId, stor
                         onAdd={handleAddTimer}
                         onClose={() => setShowAddModal(false)}
                         timerCount={0}
+                        savedCourses={settings.savedCourses || []}
                     />
                 )}
             </div>
@@ -350,6 +365,7 @@ export default function ExamScreen({ settings, onExit, onSettings, groupId, stor
                     onAdd={handleAddTimer}
                     onClose={() => setShowAddModal(false)}
                     timerCount={examTimers.length}
+                    savedCourses={settings.savedCourses || []}
                 />
             )}
 

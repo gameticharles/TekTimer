@@ -64,6 +64,22 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
         durationSeconds: number
     ) => {
         if (!activePreset) return;
+
+        // Auto-save new course if it doesn't exist
+        const isNewCourse = !settings.savedCourses.some(c => c.code === courseCode);
+        if (isNewCourse) {
+            const levelMatch = courseCode.match(/\d{3}/);
+            const yearLevel = levelMatch ? parseInt(levelMatch[0][0]) : 1;
+            const newCourse = {
+                code: courseCode,
+                title: courseTitle || '',
+                program: program,
+                yearLevel,
+                recommendedStudentCount: studentCount
+            };
+            onUpdate({ savedCourses: [...settings.savedCourses, newCourse] });
+        }
+
         const label = [courseCode, courseTitle, program].filter(Boolean).join(' · ');
         const newTimer: ExamTimer = {
             id: `ptimer-${Date.now()}`,
@@ -402,6 +418,7 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                     onClose={() => setShowAddExam(false)}
                     onAdd={(code, title, prog, count, duration) => handleAddExamTimer(code, title, prog, count, duration)}
                     timerCount={activePreset?.timers.length || 0}
+                    savedCourses={settings.savedCourses || []}
                 />
             )}
             {showAddQuiz && (

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X } from 'lucide-react';
+import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X, Database } from 'lucide-react';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getVersion } from '@tauri-apps/api/app';
@@ -7,6 +7,7 @@ import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry, ExamTimer } from
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
 import PresetManager from '../components/PresetManager';
+import CourseManager from '../components/CourseManager';
 
 interface Props {
     settings: AppSettings;
@@ -26,6 +27,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
     const { addLog } = useProctorStore(); // Keep addLog for some local UI events if needed, but we'll use it less
 
     const [showPresets, setShowPresets] = useState(false);
+    const [showCourses, setShowCourses] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showPresetSelection, setShowPresetSelection] = useState(false);
     const [appVersion, setAppVersion] = useState<string>('');
@@ -300,7 +302,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
     return (
         <div className="h-screen w-screen bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white flex flex-col font-sans overflow-hidden transition-colors">
             {/* Top Navigation Bar */}
-            <div data-tauri-drag-region className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] flex items-center justify-between px-6 shrink-0 transition-colors">
+            <div data-tauri-drag-region className="h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1F2937] flex items-center justify-between px-6 shrink-0 transition-colors">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
                         <img src="/icon.png" alt="Proctor App Icon" className="w-12 h-12 object-contain" />
@@ -336,6 +338,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         <button onClick={() => setShowPresets(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Manage Presets">
                             <FolderPlus size={20} />
                         </button>
+                        <button onClick={() => setShowCourses(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Manage Courses">
+                            <Database size={20} />
+                        </button>
                         <button onClick={onSettings} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Settings">
                             <Settings size={20} />
                         </button>
@@ -353,43 +358,43 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     {/* Metrics Top Row */}
                     <div className="grid grid-cols-4 gap-4 mb-6 shrink-0">
                         {/* Running */}
-                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Running</span>
                                 <CheckCircle2 size={16} className="text-emerald-500" />
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.running.toString().padStart(2, '0')}</div>
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-700">
                                 <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(metrics.running / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
 
                         {/* Warning */}
-                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Warning</span>
                                 <AlertTriangle size={16} className="text-amber-500" />
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.warning.toString().padStart(2, '0')}</div>
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-700">
                                 <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${(metrics.warning / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
 
                         {/* Ended */}
-                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Ended</span>
                                 <XCircle size={16} className="text-red-500" />
                             </div>
                             <div className="text-3xl font-bold text-gray-900 dark:text-white">{metrics.ended.toString().padStart(2, '0')}</div>
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800">
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-700">
                                 <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${(metrics.ended / Math.max(1, metrics.totalTimers)) * 100}%` }}></div>
                             </div>
                         </div>
 
                         {/* Scheduled */}
-                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-800 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-xl p-5 relative overflow-hidden transition-colors shadow-sm dark:shadow-none">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Scheduled</span>
                                 <Clock size={16} className="text-gray-400" />
@@ -772,16 +777,22 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         onUpdate={onUpdateSettings}
                         onClose={() => setShowPresets(false)}
                     />
-                )
-            }
+                )}
 
+            {showCourses && (
+                <CourseManager
+                    settings={settings}
+                    onUpdate={onUpdateSettings}
+                    onClose={() => setShowCourses(false)}
+                />
+            )}
             {/* Sub-modal: Launch Preset Selection */}
             {
                 showPresetSelection && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-colors">
                         <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] transition-colors">
                             {/* Header */}
-                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 shrink-0">
+                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 shrink-0">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Scheduled Hall Sessions</h3>
                                     <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-0.5">Select a preset to launch monitoring</p>
@@ -820,11 +831,11 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                     return Object.entries(groups).map(([date, presets]) => (
                                         <div key={date} className="mb-8 last:mb-0">
                                             <div className="flex items-center gap-3 mb-4">
-                                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
+                                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700"></div>
                                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
                                                     {date === 'Unscheduled' ? 'No Scheduled Date' : new Date(date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                                                 </span>
-                                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
+                                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700"></div>
                                             </div>
 
                                             <div className="grid gap-3">
