@@ -1,8 +1,8 @@
 [package]
 name = "tektimer"
-version = "0.1.0"
+version = "0.4.0"
 description = "Exam & Quiz Timer"
-authors = ["you"]
+authors = ["Rein Tech Services"]
 edition = "2021"
 
 [lib]
