@@ -52,7 +52,7 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
         setPresets(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
     };
 
-    const handleUpdatePresetField = (id: string, field: 'session' | 'scheduledStartTime' | 'remark', value: string) => {
+    const handleUpdatePresetField = (id: string, field: 'session' | 'scheduledStartTime' | 'scheduledDate' | 'remark', value: string) => {
         setPresets(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
     };
 
@@ -252,13 +252,21 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Scheduled Start Time</label>
-                                            <input
-                                                type="time"
-                                                value={activePreset.scheduledStartTime || ''}
-                                                onChange={(e) => handleUpdatePresetField(activePreset.id, 'scheduledStartTime', e.target.value)}
-                                                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
-                                            />
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Scheduled Time & Date</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="time"
+                                                    value={activePreset.scheduledStartTime || ''}
+                                                    onChange={(e) => handleUpdatePresetField(activePreset.id, 'scheduledStartTime', e.target.value)}
+                                                    className="w-1/3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
+                                                />
+                                                <input
+                                                    type="date"
+                                                    value={activePreset.scheduledDate || ''}
+                                                    onChange={(e) => handleUpdatePresetField(activePreset.id, 'scheduledDate', e.target.value)}
+                                                    className="w-2/3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
+                                                />
+                                            </div>
                                         </div>
                                         <div className="col-span-2">
                                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Remark / Report</label>

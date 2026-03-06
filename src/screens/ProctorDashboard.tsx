@@ -59,6 +59,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
             name: string,
             session?: string,
             scheduledStartTime?: string,
+            scheduledDate?: string,
             remark?: string,
             timers: AnyTimer[],
             status: string,
@@ -103,6 +104,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                 name: mainTimer?.groupName || `Hall ${groupId.split('-')[1]?.substring(0, 4) || ''}`,
                 session: mainTimer?.groupSession,
                 scheduledStartTime: mainTimer?.groupStartTime,
+                scheduledDate: mainTimer?.groupDate,
                 remark: mainTimer?.groupRemark,
                 timers: groupTimers,
                 status,
@@ -211,10 +213,33 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
         return { running, warning, ended, scheduled: idle, totalTimers, avgProgress, totalStudents };
     }, [allGroups, settings.warningThresholdSeconds]);
 
-    const filteredGroups = allGroups.filter(g =>
-        g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        g.timers.some(t => t.label.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const filteredGroups = allGroups.filter(g => {
+        const query = searchQuery.toLowerCase();
+        // Check Group-level fields
+        const matchGroup =
+            g.name.toLowerCase().includes(query) ||
+            (g.session?.toLowerCase().includes(query)) ||
+            (g.scheduledDate?.toLowerCase().includes(query)) ||
+            (g.remark?.toLowerCase().includes(query));
+
+        if (matchGroup) return true;
+
+        // Check Individual Timer fields
+        return g.timers.some(t => {
+            const basicMatch = t.label.toLowerCase().includes(query);
+            if (basicMatch) return true;
+
+            if (t.mode === 'exam') {
+                return (
+                    t.courseCode.toLowerCase().includes(query) ||
+                    (t.courseTitle?.toLowerCase().includes(query)) ||
+                    t.program.toLowerCase().includes(query) ||
+                    t.studentCount.toString().includes(query)
+                );
+            }
+            return false;
+        });
+    });
 
     const handleStartPreset = async (preset: TimerPreset) => {
         const groupId = await createGroupFromPreset(preset, false);
@@ -426,7 +451,8 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                         </button>
                                         <div className="text-[10px] text-gray-500 mt-0.5">
                                             {group.session ? <span className="text-emerald-600 dark:text-emerald-500 font-semibold">{group.session} • </span> : null}
-                                            {group.scheduledStartTime ? <span className="font-mono text-gray-700 dark:text-gray-400">{group.scheduledStartTime} • </span> : null}
+                                            {group.scheduledStartTime ? <span className="font-mono text-gray-700 dark:text-gray-400">{group.scheduledStartTime}{group.scheduledDate ? ` · ${group.scheduledDate}` : ''} • </span> : null}
+                                            {!group.scheduledStartTime && group.scheduledDate ? <span className="font-mono text-gray-700 dark:text-gray-400">{group.scheduledDate} • </span> : null}
                                             {group.timers.length} Timers
                                             {group.totalRequiredSheets > 0 && (
                                                 <span className={`ml-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-colors ${group.attendanceCount === group.totalRequiredSheets ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
@@ -732,32 +758,104 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
             {/* Sub-modal: Launch Preset Selection */}
             {
                 showPresetSelection && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-xl w-[400px] shadow-2xl p-6 transition-colors">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Launch Hall Preset</h3>
-                                <button onClick={() => setShowPresetSelection(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                                    <XCircle size={20} />
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-colors">
+                        <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] transition-colors">
+                            {/* Header */}
+                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 shrink-0">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Scheduled Hall Sessions</h3>
+                                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-0.5">Select a preset to launch monitoring</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowPresetSelection(false)}
+                                    className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-all"
+                                >
+                                    <XCircle size={24} />
                                 </button>
                             </div>
-                            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
-                                {settings.savedPresets?.length > 0 ? settings.savedPresets.map(preset => (
-                                    <button
-                                        key={preset.id}
-                                        onClick={() => handleStartPreset(preset)}
-                                        className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
-                                    >
-                                        <div className="font-bold text-sm text-gray-900 dark:text-gray-200">{preset.name}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 pb-1">
-                                            {preset.session ? `${preset.session} • ` : null}
-                                            {preset.scheduledStartTime ? `${preset.scheduledStartTime} • ` : null}
-                                            {preset.timers.length} timers configured
+
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-6">
+                                {settings.savedPresets?.length > 0 ? (() => {
+                                    // Sort presets: Date (asc), then Time (asc)
+                                    const sortedPresets = [...settings.savedPresets].sort((a, b) => {
+                                        const dateA = a.scheduledDate || '9999-99-99';
+                                        const dateB = b.scheduledDate || '9999-99-99';
+                                        const dateCompare = dateA.localeCompare(dateB);
+                                        if (dateCompare !== 0) return dateCompare;
+
+                                        const timeA = a.scheduledStartTime || '23:59';
+                                        const timeB = b.scheduledStartTime || '23:59';
+                                        return timeA.localeCompare(timeB);
+                                    });
+
+                                    // Group by Date
+                                    const groups: { [date: string]: typeof sortedPresets } = {};
+                                    sortedPresets.forEach(p => {
+                                        const date = p.scheduledDate || 'Unscheduled';
+                                        if (!groups[date]) groups[date] = [];
+                                        groups[date].push(p);
+                                    });
+
+                                    return Object.entries(groups).map(([date, presets]) => (
+                                        <div key={date} className="mb-8 last:mb-0">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
+                                                    {date === 'Unscheduled' ? 'No Scheduled Date' : new Date(date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                                </span>
+                                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800"></div>
+                                            </div>
+
+                                            <div className="grid gap-3">
+                                                {presets.map(preset => (
+                                                    <button
+                                                        key={preset.id}
+                                                        onClick={() => handleStartPreset(preset)}
+                                                        className="group w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-all shadow-sm hover:shadow-md"
+                                                    >
+                                                        <div className="flex items-start justify-between gap-4">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <div className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                                        {preset.name}
+                                                                    </div>
+                                                                    {preset.session && (
+                                                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight border border-emerald-100 dark:border-emerald-500/20">
+                                                                            {preset.session}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
+                                                                    {preset.timers.length} {preset.timers.length === 1 ? 'Course' : 'Courses'} • {preset.timers.reduce((acc, t) => acc + (t.mode === 'exam' ? (t.studentCount || 0) : 0), 0)} Students
+                                                                </div>
+                                                                {preset.remark && (
+                                                                    <div className="text-[10px] text-gray-400 mt-2 italic truncate max-w-[280px]">
+                                                                        ★ {preset.remark}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="shrink-0 text-right">
+                                                                <div className="text-lg font-mono font-bold text-blue-600 dark:text-blue-400">
+                                                                    {preset.scheduledStartTime || 'No Time'}
+                                                                </div>
+                                                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-1">Scheduled Time</div>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                        {preset.remark && <div className="text-[10px] text-gray-400 italic truncate max-w-[300px] mt-1">★ {preset.remark}</div>}
-                                    </button>
-                                )) : (
-                                    <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                                        No presets created yet. Click "Manage Presets" in the top right to create one.
+                                    ));
+                                })() : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
+                                            <XCircle size={32} className="text-gray-300 dark:text-gray-600" />
+                                        </div>
+                                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 max-w-[240px]">
+                                            No hall presets found. Create one in the Manage Presets menu.
+                                        </p>
                                     </div>
                                 )}
                             </div>

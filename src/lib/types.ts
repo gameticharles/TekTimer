@@ -16,6 +16,7 @@ export interface TimerBase {
     endTimeUnix: number | null;
     groupSession?: string;
     groupStartTime?: string;
+    groupDate?: string; // YYYY-MM-DD
     groupRemark?: string;
     groupName?: string;
     attendanceSheetPath?: string;
@@ -27,6 +28,7 @@ export interface TimerGroup {
     location?: string; // e.g., 'North Campus'
     session?: string;
     scheduledStartTime?: string;
+    scheduledDate?: string;
     remark?: string;
 }
 
@@ -35,6 +37,7 @@ export interface TimerPreset {
     name: string;
     session?: string;
     scheduledStartTime?: string;
+    scheduledDate?: string;
     remark?: string;
     status: 'Idle' | 'Started' | 'Ended';
     timers: AnyTimer[]; // Configuration for timers in this preset

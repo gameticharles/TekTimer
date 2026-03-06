@@ -301,6 +301,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                 groupId,
                 groupSession: preset.session,
                 groupStartTime: preset.scheduledStartTime,
+                groupDate: preset.scheduledDate,
                 groupRemark: preset.remark,
                 groupName: preset.name,
                 status: 'Idle',
