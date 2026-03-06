@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList } from 'lucide-react';
-import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry } from '../lib/types';
+import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry, ExamTimer } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
 import PresetManager from '../components/PresetManager';
@@ -28,6 +28,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
 
     const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+    const [notifiedGroups, setNotifiedGroups] = useState<Set<string>>(new Set());
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -61,7 +62,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
             timers: AnyTimer[],
             status: string,
             progress: number,
-            mainTimer: AnyTimer | null
+            mainTimer: AnyTimer | null,
+            attendanceCount: number,
+            totalRequiredSheets: number
         }[] = [];
 
         map.forEach((groupTimers, groupId) => {
@@ -86,6 +89,14 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
             const mainTimer = groupTimers.find(t => t.mode === 'exam') || groupTimers[0];
 
+            // Attendance check
+            const preset = settings.savedPresets.find(p => p.timers.some(pt =>
+                groupTimers.some(gt => gt.mode === 'exam' && pt.mode === 'exam' && gt.courseCode === pt.courseCode)
+            ));
+            const examTimersInPreset = preset?.timers.filter(t => t.mode === 'exam') || [];
+            const attendanceCount = examTimersInPreset.filter(t => t.attendanceSheetPath).length;
+            const totalRequiredSheets = examTimersInPreset.length;
+
             activeGroups.push({
                 id: groupId,
                 name: `Hall ${groupId.split('-')[1]?.substring(0, 4) || ''}`, // Fallback name
@@ -95,7 +106,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                 timers: groupTimers,
                 status,
                 progress,
-                mainTimer
+                mainTimer,
+                attendanceCount,
+                totalRequiredSheets
             });
         });
 
@@ -136,7 +149,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
             timers: ungroupedTimers,
             status,
             progress,
-            mainTimer: ungroupedTimers[0] || null
+            mainTimer: ungroupedTimers[0] || null,
+            attendanceCount: 0,
+            totalRequiredSheets: 0
         };
     }, [ungroupedTimers, settings.warningThresholdSeconds]);
 
@@ -146,6 +161,39 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
         if (ungroupedGroup) result.push(ungroupedGroup);
         return result;
     }, [groups, ungroupedGroup]);
+
+    // Track hall completion and attendance verification
+    useEffect(() => {
+        allGroups.forEach(group => {
+            if (group.id === '__standalone__') return;
+
+            if (group.status === 'ENDED' && !notifiedGroups.has(group.id)) {
+                setNotifiedGroups(prev => new Set(prev).add(group.id));
+
+                // Find matching preset by timers to update its status
+                const preset = settings.savedPresets.find(p => p.timers.some(pt =>
+                    group.timers.some(gt => gt.mode === 'exam' && pt.mode === 'exam' && gt.courseCode === pt.courseCode)
+                ));
+
+                if (preset && preset.status !== 'Ended') {
+                    // 1. Move Hall State to Ended
+                    const updatedPresets = settings.savedPresets.map(p =>
+                        p.id === preset.id ? { ...p, status: 'Ended' as const } : p
+                    );
+                    onUpdateSettings({ savedPresets: updatedPresets });
+
+                    // 2. Verify Attendance Sheets
+                    const missing = preset.timers.filter(t => t.mode === 'exam' && !t.attendanceSheetPath);
+                    if (missing.length > 0) {
+                        const courses = missing.map(m => (m as ExamTimer).courseCode).join(', ');
+                        addLog('WARNING', `Hall ${preset.name} ended with missing attendance sheets for: ${courses}`, undefined, group.id);
+                    } else {
+                        addLog('INFO', `Hall ${preset.name} ended with all attendance sheets verified.`, undefined, group.id);
+                    }
+                }
+            }
+        });
+    }, [allGroups, notifiedGroups, settings.savedPresets, onUpdateSettings, addLog]);
 
     // Derived Metrics — count individual timers, not groups
     const metrics = useMemo(() => {
@@ -169,7 +217,13 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
     const handleStartPreset = async (preset: TimerPreset) => {
         const groupId = await createGroupFromPreset(preset, false);
-        // We can optionally store the name somewhere, but right now we derive it or we can just log it
+
+        // Update preset status in settings
+        const updatedPresets = settings.savedPresets.map(p =>
+            p.id === preset.id ? { ...p, status: 'Started' as const } : p
+        );
+        onUpdateSettings({ savedPresets: updatedPresets });
+
         addLog('SYSTEM', `Administrator loaded preset ${preset.name}`, undefined, groupId);
         setShowPresetSelection(false);
     };
@@ -371,6 +425,11 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                             {group.session ? <span className="text-emerald-600 dark:text-emerald-500 font-semibold">{group.session} • </span> : null}
                                             {group.scheduledStartTime ? <span className="font-mono text-gray-700 dark:text-gray-400">{group.scheduledStartTime} • </span> : null}
                                             {group.timers.length} Timers
+                                            {group.totalRequiredSheets > 0 && (
+                                                <span className={`ml-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-colors ${group.attendanceCount === group.totalRequiredSheets ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
+                                                    Sheets: {group.attendanceCount}/{group.totalRequiredSheets}
+                                                </span>
+                                            )}
                                         </div>
                                         {group.remark && (
                                             <div title={group.remark} className="text-[10px] text-gray-400 mt-1 mb-2 truncate max-w-[150px] italic">

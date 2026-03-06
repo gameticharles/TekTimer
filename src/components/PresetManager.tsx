@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Settings, Plus, Trash2, X, Edit3, Save } from 'lucide-react';
+import { Settings, Plus, Trash2, X, Edit3, Save, Image, Upload, CheckCircle2, ClipboardList } from 'lucide-react';
+import { open } from '@tauri-apps/plugin-dialog';
 import type { TimerPreset, AppSettings, ExamTimer, QuizTimer } from '../lib/types';
 import AddExamTimerModal from './AddExamTimerModal';
 import QuizSetupModal from './QuizSetupModal';
@@ -11,7 +12,9 @@ interface Props {
 }
 
 export default function PresetManager({ settings, onUpdate, onClose }: Props) {
-    const [presets, setPresets] = useState<TimerPreset[]>(settings.savedPresets || []);
+    const [presets, setPresets] = useState<TimerPreset[]>(
+        (settings.savedPresets || []).map(p => ({ ...p, status: p.status || 'Idle' }))
+    );
     const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
     const [showAddExam, setShowAddExam] = useState(false);
     const [showAddQuiz, setShowAddQuiz] = useState(false);
@@ -27,6 +30,7 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
         const newPreset: TimerPreset = {
             id: `preset-${Date.now()}`,
             name: `New Hall ${presets.length + 1}`,
+            status: 'Idle',
             timers: []
         };
         setPresets(prev => [...prev, newPreset]);
@@ -110,6 +114,36 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
         }));
     };
 
+    const handleUpdatePresetStatus = (id: string, status: 'Idle' | 'Started' | 'Ended') => {
+        setPresets(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+    };
+
+    const handleUploadAttendance = async (timerId: string) => {
+        if (!activePreset) return;
+        try {
+            const selected = await open({
+                multiple: false,
+                filters: [{
+                    name: 'Image',
+                    extensions: ['png', 'jpg', 'jpeg']
+                }]
+            });
+
+            if (selected) {
+                const path = Array.isArray(selected) ? selected[0] : selected;
+                setPresets(prev => prev.map(p => {
+                    if (p.id !== activePreset.id) return p;
+                    return {
+                        ...p,
+                        timers: p.timers.map(t => t.id === timerId ? { ...t, attendanceSheetPath: path } : t)
+                    };
+                }));
+            }
+        } catch (err) {
+            console.error('Failed to open dialog:', err);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-gray-900 dark:text-gray-100 transition-colors">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col h-[85vh] transition-colors overflow-hidden">
@@ -172,14 +206,32 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                             <>
                                 <div className="p-6 border-b border-gray-200 dark:border-gray-800 shrink-0">
                                     <div className="flex items-center gap-3 mb-4">
-                                        <input
-                                            type="text"
-                                            value={activePreset.name}
-                                            onChange={(e) => handleRenamePreset(activePreset.id, e.target.value)}
-                                            className="text-2xl font-bold bg-transparent border-b-2 border-transparent focus:border-emerald-500 focus:outline-none px-1 py-1 w-full text-gray-900 dark:text-white"
-                                            placeholder="Hall Name (e.g., Main Auditorium)"
-                                        />
-                                        <Edit3 size={18} className="text-gray-400" />
+                                        <div className="flex-1 flex items-center gap-3">
+                                            <input
+                                                type="text"
+                                                value={activePreset.name}
+                                                onChange={(e) => handleRenamePreset(activePreset.id, e.target.value)}
+                                                className="text-2xl font-bold bg-transparent border-b-2 border-transparent focus:border-emerald-500 focus:outline-none px-1 py-1 w-full text-gray-900 dark:text-white"
+                                                placeholder="Hall Name (e.g., Main Auditorium)"
+                                            />
+                                            <Edit3 size={18} className="text-gray-400" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${activePreset.status === 'Started' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' :
+                                                    activePreset.status === 'Ended' ? 'bg-red-500/10 border-red-500/50 text-red-500' :
+                                                        'bg-gray-500/10 border-gray-500/50 text-gray-500'
+                                                }`}>
+                                                {activePreset.status}
+                                            </span>
+                                            {activePreset.status === 'Ended' && (
+                                                <button
+                                                    onClick={() => handleUpdatePresetStatus(activePreset.id, 'Idle')}
+                                                    className="p-1 px-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-[10px] font-bold transition-colors"
+                                                >
+                                                    Reset
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -258,6 +310,55 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                     {activePreset.timers.length === 0 && (
                                         <div className="text-center text-gray-400 py-12">
                                             No timers added to this hall yet.
+                                        </div>
+                                    )}
+
+                                    {/* Attendance Section */}
+                                    {activePreset.timers.some(t => t.mode === 'exam') && (
+                                        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                    <ClipboardList size={18} className="text-emerald-500" />
+                                                    Student Attendance Sheets
+                                                </h3>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                    Required for each course
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {activePreset.timers.filter(t => t.mode === 'exam').map((t) => {
+                                                    const timer = t as ExamTimer;
+                                                    return (
+                                                        <div key={timer.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${timer.attendanceSheetPath ? 'bg-emerald-50/30 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20' : 'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700'}`}>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`p-2 rounded-lg ${timer.attendanceSheetPath ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                                                                    <Image size={16} />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-gray-900 dark:text-white">{timer.courseCode}</div>
+                                                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                                                                        {timer.attendanceSheetPath ? 'Sheet attached' : 'No sheet uploaded'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => handleUploadAttendance(timer.id)}
+                                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${timer.attendanceSheetPath
+                                                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                                                            >
+                                                                {timer.attendanceSheetPath ? (
+                                                                    <><CheckCircle2 size={12} /> Replace</>
+                                                                ) : (
+                                                                    <><Upload size={12} /> Upload Sheet</>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

@@ -17,6 +17,7 @@ export interface TimerBase {
     groupSession?: string;
     groupStartTime?: string;
     groupRemark?: string;
+    attendanceSheetPath?: string;
 }
 
 export interface TimerGroup {
@@ -34,6 +35,7 @@ export interface TimerPreset {
     session?: string;
     scheduledStartTime?: string;
     remark?: string;
+    status: 'Idle' | 'Started' | 'Ended';
     timers: AnyTimer[]; // Configuration for timers in this preset
 }
 
