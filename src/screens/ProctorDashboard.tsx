@@ -260,12 +260,12 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
             {/* Top Navigation Bar */}
             <div data-tauri-drag-region className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] flex items-center justify-between px-6 shrink-0 transition-colors">
                 <div className="flex items-center gap-4">
-                    <div>
-                        <h1 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                            <img src="/icon.png" alt="TekTimer Logo" className="w-6 h-6 object-contain" />
-                            Exam Dashboard
-                        </h1>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold tracking-widest uppercase">Tek Timer Management &amp; Monitoring</p>
+                    <div className="flex items-center gap-3">
+                        <img src="/icon.png" alt="Proctor App Icon" className="w-12 h-12 object-contain" />
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">Exam & Quiz Dashboard</h1>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold tracking-widest uppercase">Tek Timer Administrator View</p>
+                        </div>
                     </div>
                 </div>
 
@@ -761,6 +761,33 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     </div>
                 )
             }
+            {/* Bottom Status Bar */}
+            <div className="h-10 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] shrink-0 flex items-center justify-between px-6 text-[10px] font-bold text-gray-500 dark:text-gray-400 tracking-wide uppercase transition-colors">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                        <span>System Health: <span className="text-emerald-500">Optimal</span></span>
+                    </div>
+                    <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
+                    <div>
+                        <span>Sync Frequency: <span className="text-gray-900 dark:text-gray-200">500ms</span></span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <span className="text-[8px]">👤</span>
+                        </div>
+                        <span>Administrator: <span className="text-gray-900 dark:text-gray-200">Admin-Main</span></span>
+                    </div>
+                    <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="flex items-center gap-1.5">
+                        <Clock size={10} className="text-gray-400" />
+                        <span>Last Updated: <span className="text-gray-900 dark:text-gray-200">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></span>
+                    </div>
+                </div>
+            </div>
         </div >
     );
 }
