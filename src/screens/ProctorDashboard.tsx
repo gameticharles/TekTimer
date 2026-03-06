@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList } from 'lucide-react';
+import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X } from 'lucide-react';
 import { ask } from '@tauri-apps/plugin-dialog';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getVersion } from '@tauri-apps/api/app';
 import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry, ExamTimer } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
@@ -26,6 +28,21 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
     const [showPresets, setShowPresets] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showPresetSelection, setShowPresetSelection] = useState(false);
+    const [appVersion, setAppVersion] = useState<string>('');
+
+    useEffect(() => {
+        getVersion().then(setAppVersion);
+    }, []);
+
+    const handleExit = async () => {
+        const confirmed = await ask("Are you sure you want to exit the application?", {
+            title: "Exit Confirmation",
+            kind: "warning"
+        });
+        if (confirmed) {
+            await getCurrentWindow().close();
+        }
+    };
 
 
     const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
@@ -321,6 +338,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         </button>
                         <button onClick={onSettings} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Settings">
                             <Settings size={20} />
+                        </button>
+                        <button onClick={handleExit} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400" title="Close Application">
+                            <X size={20} />
                         </button>
                     </div>
                 </div>
@@ -869,6 +889,10 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                         <span>System Health: <span className="text-emerald-500">Optimal</span></span>
+                    </div>
+                    <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
+                    <div>
+                        <span>Version: <span className="text-gray-900 dark:text-gray-200">v{appVersion}</span></span>
                     </div>
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
                     <div>
