@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Settings, Plus, Trash2, X, Edit3, Save, Image, Upload, CheckCircle2, ClipboardList } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Settings, Plus, Trash2, X, MapPin, Users, ClipboardList, CheckCircle2, Upload, Image, Save } from 'lucide-react';
 import { open, ask } from '@tauri-apps/plugin-dialog';
-import type { TimerPreset, AppSettings, ExamTimer, QuizTimer } from '../lib/types';
+import type { TimerPreset, AppSettings, ExamTimer, QuizTimer, Venue, AnyTimer } from '../lib/types';
 import AddExamTimerModal from './AddExamTimerModal';
 import QuizSetupModal from './QuizSetupModal';
 
@@ -13,28 +13,29 @@ interface Props {
 
 export default function PresetManager({ settings, onUpdate, onClose }: Props) {
     const [presets, setPresets] = useState<TimerPreset[]>(
-        (settings.savedPresets || []).map(p => ({ ...p, status: p.status || 'Idle' }))
+        (settings.savedPresets || []).map((p: TimerPreset) => ({ ...p, status: p.status || 'Idle' }))
     );
     const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
     const [showAddExam, setShowAddExam] = useState(false);
     const [showAddQuiz, setShowAddQuiz] = useState(false);
+    const [venueSearch, setVenueSearch] = useState('');
+    const [showVenueSuggestions, setShowVenueSuggestions] = useState(false);
 
     const activePreset = presets.find(p => p.id === editingPresetId);
 
-    const handleSave = () => {
-        onUpdate({ savedPresets: presets });
-        onClose();
-    };
+
 
     const handleCreateNewPreset = () => {
         const newPreset: TimerPreset = {
             id: `preset-${Date.now()}`,
-            name: `New Hall ${presets.length + 1}`,
+            name: '',
+            capacity: 0,
             status: 'Idle',
             timers: []
         };
         setPresets(prev => [...prev, newPreset]);
         setEditingPresetId(newPreset.id);
+        setVenueSearch('');
     };
 
     const handleDeletePreset = async (id: string) => {
@@ -43,16 +44,24 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
             kind: 'warning',
         });
         if (confirmed) {
-            setPresets(prev => prev.filter(p => p.id !== id));
+            setPresets((prev: TimerPreset[]) => prev.filter((p: TimerPreset) => p.id !== id));
             if (editingPresetId === id) setEditingPresetId(null);
         }
     };
 
     const handleRenamePreset = (id: string, newName: string) => {
-        setPresets(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
+        setPresets((prev: TimerPreset[]) => prev.map((p: TimerPreset) => p.id === id ? { ...p, name: newName } : p));
+        setVenueSearch(newName);
+        setShowVenueSuggestions(true);
     };
 
-    const handleUpdatePresetField = (id: string, field: 'session' | 'scheduledStartTime' | 'scheduledDate' | 'remark', value: string) => {
+    const handleSelectVenue = (id: string, venue: { name: string, capacity: number }) => {
+        setPresets(prev => prev.map(p => p.id === id ? { ...p, name: venue.name, capacity: venue.capacity } : p));
+        setVenueSearch(venue.name);
+        setShowVenueSuggestions(false);
+    };
+
+    const handleUpdatePresetField = (id: string, field: 'session' | 'scheduledStartTime' | 'scheduledDate' | 'remark' | 'capacity', value: string | number) => {
         setPresets(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
     };
 
@@ -135,7 +144,40 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
     };
 
     const handleUpdatePresetStatus = (id: string, status: 'Idle' | 'Started' | 'Ended') => {
-        setPresets(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+        setPresets((prev: TimerPreset[]) => prev.map((p: TimerPreset) => p.id === id ? { ...p, status } : p));
+    };
+
+    const venueSuggestions = useMemo(() => {
+        if (!venueSearch) return [];
+        const query = venueSearch.toLowerCase();
+        return settings.savedVenues.filter((v: Venue) =>
+            v.name.toLowerCase().includes(query) ||
+            (v.description && v.description.toLowerCase().includes(query))
+        );
+    }, [venueSearch, settings.savedVenues]);
+
+    const handleSaveAndSync = () => {
+        // Find if we have any "New" venues to save to the database
+        const currentVenues = [...settings.savedVenues];
+        let hasNewVenues = false;
+
+        presets.forEach((p: TimerPreset) => {
+            if (p.name && !currentVenues.some((v: Venue) => v.name.toLowerCase() === p.name.toLowerCase())) {
+                currentVenues.push({
+                    id: `v-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                    name: p.name,
+                    capacity: p.capacity || 0
+                });
+                hasNewVenues = true;
+            }
+        });
+
+        if (hasNewVenues) {
+            onUpdate({ savedVenues: currentVenues, savedPresets: presets });
+        } else {
+            onUpdate({ savedPresets: presets });
+        }
+        onClose();
     };
 
     const handleUploadAttendance = async (timerId: string) => {
@@ -226,15 +268,38 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                             <>
                                 <div className="p-6 border-b border-gray-200 dark:border-gray-800 shrink-0">
                                     <div className="flex items-center gap-3 mb-4">
-                                        <div className="flex-1 flex items-center gap-3">
-                                            <input
-                                                type="text"
-                                                value={activePreset.name}
-                                                onChange={(e) => handleRenamePreset(activePreset.id, e.target.value)}
-                                                className="text-2xl font-bold bg-transparent border-b-2 border-transparent focus:border-emerald-500 focus:outline-none px-1 py-1 w-full text-gray-900 dark:text-white"
-                                                placeholder="Hall Name (e.g., Main Auditorium)"
-                                            />
-                                            <Edit3 size={18} className="text-gray-400" />
+                                        <div className="flex-1 relative">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="text"
+                                                    value={activePreset.name}
+                                                    onChange={(e) => handleRenamePreset(activePreset.id, e.target.value)}
+                                                    onFocus={() => setShowVenueSuggestions(true)}
+                                                    className="text-2xl font-bold bg-transparent border-b-2 border-transparent focus:border-emerald-500 focus:outline-none px-1 py-1 w-full text-gray-900 dark:text-white"
+                                                    placeholder="Hall Name (e.g. OSC 1)"
+                                                />
+                                                <MapPin size={18} className="text-gray-400" />
+                                            </div>
+
+                                            {showVenueSuggestions && venueSuggestions.length > 0 && (
+                                                <div className="absolute left-0 top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    {venueSuggestions.map(venue => (
+                                                        <button
+                                                            key={venue.id}
+                                                            onClick={() => handleSelectVenue(activePreset.id, venue)}
+                                                            className="w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center justify-between group transition-colors"
+                                                        >
+                                                            <div>
+                                                                <div className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-500 transition-colors">{venue.name}</div>
+                                                                {venue.description && <div className="text-[10px] text-gray-500 dark:text-gray-400">{venue.description}</div>}
+                                                            </div>
+                                                            <div className="text-[10px] font-black text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                                                                CAP: {venue.capacity}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${activePreset.status === 'Started' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' :
@@ -255,9 +320,9 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Session</label>
-                                            <div className="relative">
+                                        <div className="col-span-2 grid grid-cols-4 gap-4">
+                                            <div className="col-span-3">
+                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Session</label>
                                                 <input
                                                     type="text"
                                                     value={activePreset.session || ''}
@@ -265,6 +330,19 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                                     className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
                                                     placeholder="e.g. Session 1"
                                                 />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Capacity</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        value={activePreset.capacity || 0}
+                                                        onChange={(e) => handleUpdatePresetField(activePreset.id, 'capacity', parseInt(e.target.value) || 0)}
+                                                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors font-bold"
+                                                        placeholder="0"
+                                                    />
+                                                    <Users size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -317,7 +395,7 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                         </button>
                                     </div>
 
-                                    {activePreset.timers.map((timer) => (
+                                    {activePreset.timers.map((timer: AnyTimer) => (
                                         <div key={timer.id} className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between">
                                             <div>
                                                 <div className="font-bold text-gray-900 dark:text-white">
@@ -355,7 +433,7 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                             </div>
 
                                             <div className="space-y-3">
-                                                {activePreset.timers.filter(t => t.mode === 'exam').map((t) => {
+                                                {activePreset.timers.filter((t: AnyTimer) => t.mode === 'exam').map((t: AnyTimer) => {
                                                     const timer = t as ExamTimer;
                                                     return (
                                                         <div key={timer.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${timer.attendanceSheetPath ? 'bg-emerald-50/30 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20' : 'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700'}`}>
@@ -405,7 +483,7 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                     <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                         Cancel
                     </button>
-                    <button onClick={handleSave} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
+                    <button onClick={handleSaveAndSync} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
                         <Save size={18} /> Save All Changes
                     </button>
                 </div>

@@ -34,13 +34,22 @@ export interface TimerGroup {
 
 export interface TimerPreset {
     id: string;
-    name: string;
+    name: string; // This can now be the Venue name
+    location?: string; // Optional specific room/sub-location
+    capacity?: number; // Maximum student capacity
     session?: string;
     scheduledStartTime?: string;
     scheduledDate?: string;
     remark?: string;
     status: 'Idle' | 'Started' | 'Ended';
     timers: AnyTimer[]; // Configuration for timers in this preset
+}
+
+export interface Venue {
+    id: string;
+    name: string;
+    capacity: number;
+    description?: string;
 }
 
 export interface ExamLogEntry {
@@ -126,6 +135,7 @@ export interface AppSettings {
     quickPickMessages: string[];
     savedPresets: TimerPreset[]; // Saved configurations for halls
     savedCourses: Course[]; // For auto-fill
+    savedVenues: Venue[]; // Persistent hall database
 }
 
 import { DEFAULT_ANNOUNCEMENT_SCHEDULE } from './announcements/defaultSchedule';
@@ -333,5 +343,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
         { code: 'GED 253', title: 'Physical Geology', program: 'Env Sci 2', yearLevel: 2, recommendedStudentCount: 38 },
         { code: 'ENVS 355', title: 'Environment and Health', program: 'Env Sci 3', yearLevel: 3 },
         { code: 'GEN 400', title: 'Professional Ethics', program: 'Final Year', yearLevel: 4, recommendedStudentCount: 85 }
+    ],
+    savedVenues: [
+        { id: 'v-osc1', name: 'OSC 1', capacity: 350, description: 'Large Health Sciences Hall' },
+        { id: 'v-osc2', name: 'OSC 2', capacity: 300, description: 'Medium Health Sciences Hall' },
+        { id: 'v-osc3', name: 'OSC 3', capacity: 400, description: 'Maximum Capacity Hall' },
+        { id: 'v-ha1', name: 'HA 1', capacity: 150, description: 'General Lecture Hall' },
+        { id: 'v-ha2', name: 'HA 2', capacity: 180, description: 'General Lecture Hall' },
+        { id: 'v-audit1', name: 'HA-AUDIT', capacity: 600, description: 'Main Auditorium' },
+        { id: 'v-audit2', name: 'HA-AUDIT 2', capacity: 500, description: 'Secondary Auditorium' },
+        { id: 'v-elab', name: 'E-LAB', capacity: 60, description: 'Engineering Computer Lab' }
     ]
 };
