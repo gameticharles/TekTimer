@@ -792,16 +792,21 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-colors">
                         <div className="bg-white dark:bg-[#1F2937] border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] transition-colors">
                             {/* Header */}
-                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 shrink-0">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Scheduled Hall Sessions</h3>
-                                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-0.5">Select a preset to launch monitoring</p>
+                            <div className="px-8 py-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 shrink-0">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-blue-500/10 rounded-2xl">
+                                        <Database size={28} className="text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Scheduled Hall Sessions</h3>
+                                        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500 mt-1">Select a preset to launch monitoring</p>
+                                    </div>
                                 </div>
                                 <button
                                     onClick={() => setShowPresetSelection(false)}
-                                    className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-all"
+                                    className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all group"
                                 >
-                                    <XCircle size={24} />
+                                    <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                                 </button>
                             </div>
 

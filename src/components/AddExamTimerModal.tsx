@@ -72,16 +72,16 @@ export default function AddExamTimerModal({ onAdd, onClose, timerCount, savedCou
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 transition-colors p-4">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-full max-w-[480px] shadow-2xl transition-colors overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 transition-colors shrink-0">
+                <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 dark:border-gray-800 transition-colors shrink-0 bg-white dark:bg-gray-900">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Exam Timer</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Quickly setup a new hall session</p>
+                        <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Add Exam Timer</h2>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Quickly setup a new hall session</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        className="p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all group"
                     >
-                        <X size={18} />
+                        <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
 

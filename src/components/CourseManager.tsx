@@ -96,21 +96,21 @@ export default function CourseManager({ settings, onUpdate, onClose }: Props) {
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl w-full max-w-5xl shadow-2xl transition-colors overflow-hidden flex flex-col h-[85vh]">
 
                 {/* Header */}
-                <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-3">
+                <div className="px-8 py-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-500/10 rounded-2xl">
-                            <Database size={24} className="text-blue-600 dark:text-blue-400" />
+                            <Database size={28} className="text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
                             <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Curriculum Manager</h2>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-0.5">Manage Auto-fill Database</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Manage Auto-fill Database</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white group"
                     >
-                        <X size={24} />
+                        <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
 

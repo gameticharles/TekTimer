@@ -25,13 +25,16 @@ export default function QuizSetupModal({ onStart, onClose }: QuizSetupModalProps
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-40 transition-colors">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl w-[440px] shadow-2xl transition-colors overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 transition-colors">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">New Quiz Timer</h2>
+                <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 dark:border-gray-800 transition-colors bg-white dark:bg-gray-900">
+                    <div>
+                        <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">New General Timer</h2>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Configure a custom countdown</p>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        className="p-2 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all group"
                     >
-                        <X size={18} />
+                        <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
 

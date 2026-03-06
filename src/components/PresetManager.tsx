@@ -211,12 +211,21 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col h-[85vh] transition-colors overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <Settings size={20} /> Exam Hall Presets
-                    </h2>
-                    <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors">
-                        <X size={20} />
+                <div className="px-8 py-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-emerald-500/10 rounded-2xl">
+                            <Settings size={28} className="text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Exam Hall Presets</h2>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Configure Venue Sessions</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white group"
+                    >
+                        <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
 
