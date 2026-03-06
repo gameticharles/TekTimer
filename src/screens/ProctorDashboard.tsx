@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList } from 'lucide-react';
+import { ask } from '@tauri-apps/plugin-dialog';
 import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry, ExamTimer } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
@@ -476,9 +477,13 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                             <Clock size={14} className="text-blue-500" /> Add 5 Minutes
                                                         </button>
                                                         <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
-                                                        <button onClick={(e) => {
+                                                        <button onClick={async (e) => {
                                                             e.stopPropagation();
-                                                            if (window.confirm(`Are you sure you want to remove ${group.name}?`)) {
+                                                            const confirmed = await ask(`Are you sure you want to remove ${group.name}?`, {
+                                                                title: 'Confirm Removal',
+                                                                kind: 'warning',
+                                                            });
+                                                            if (confirmed) {
                                                                 removeGroup(group.id);
                                                                 setActiveDropdownId(null);
                                                             }
@@ -591,9 +596,13 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                                     <Clock size={14} className="text-blue-500" /> Add 5 Minutes
                                                                 </button>
                                                                 <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
-                                                                <button onClick={(e) => {
+                                                                <button onClick={async (e) => {
                                                                     e.stopPropagation();
-                                                                    if (window.confirm(`Are you sure you want to delete this timer?`)) {
+                                                                    const confirmed = await ask(`Are you sure you want to delete this timer?`, {
+                                                                        title: 'Confirm Deletion',
+                                                                        kind: 'warning',
+                                                                    });
+                                                                    if (confirmed) {
                                                                         deleteTimer(timer.id);
                                                                         setActiveDropdownId(null);
                                                                     }
