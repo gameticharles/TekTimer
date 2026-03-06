@@ -262,15 +262,10 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                 <div className="flex items-center gap-4">
                     <div>
                         <h1 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                            <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center">
-                                <span className="text-[10px] grid grid-cols-2 gap-px p-px w-full h-full">
-                                    <div className="bg-white rounded-sm"></div><div className="bg-white/50 rounded-sm"></div>
-                                    <div className="bg-white/50 rounded-sm"></div><div className="bg-white rounded-sm"></div>
-                                </span>
-                            </div>
+                            <img src="/icon.png" alt="TekTimer Logo" className="w-6 h-6 object-contain" />
                             Exam Dashboard
                         </h1>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold tracking-widest uppercase">Timer Management &amp; Monitoring</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold tracking-widest uppercase">Tek Timer Management &amp; Monitoring</p>
                     </div>
                 </div>
 
