@@ -17,6 +17,7 @@ export interface TimerBase {
     groupSession?: string;
     groupStartTime?: string;
     groupRemark?: string;
+    groupName?: string;
     attendanceSheetPath?: string;
 }
 

@@ -99,7 +99,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
             activeGroups.push({
                 id: groupId,
-                name: `Hall ${groupId.split('-')[1]?.substring(0, 4) || ''}`, // Fallback name
+                name: mainTimer?.groupName || `Hall ${groupId.split('-')[1]?.substring(0, 4) || ''}`,
                 session: mainTimer?.groupSession,
                 scheduledStartTime: mainTimer?.groupStartTime,
                 remark: mainTimer?.groupRemark,
@@ -476,8 +476,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                             <Clock size={14} className="text-blue-500" /> Add 5 Minutes
                                                         </button>
                                                         <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
-                                                        <button onClick={() => {
-                                                            if (confirm(`Are you sure you want to remove ${group.name}?`)) {
+                                                        <button onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (window.confirm(`Are you sure you want to remove ${group.name}?`)) {
                                                                 removeGroup(group.id);
                                                                 setActiveDropdownId(null);
                                                             }
@@ -590,8 +591,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                                     <Clock size={14} className="text-blue-500" /> Add 5 Minutes
                                                                 </button>
                                                                 <div className="h-px w-full bg-gray-200 dark:bg-gray-700 my-1"></div>
-                                                                <button onClick={() => {
-                                                                    if (confirm(`Are you sure you want to delete this timer?`)) {
+                                                                <button onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (window.confirm(`Are you sure you want to delete this timer?`)) {
                                                                         deleteTimer(timer.id);
                                                                         setActiveDropdownId(null);
                                                                     }
