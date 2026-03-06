@@ -1,3 +1,6 @@
+## [0.3.2] - 2026-03-06
+
+fixed UI bugs
 ## [0.3.1] - 2026-03-06
 
 - fixed logo (0ac0dfe)
@@ -34,6 +37,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
