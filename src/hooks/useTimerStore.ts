@@ -9,7 +9,7 @@ import { audioManager } from '../lib/audioManager';
 
 const TIMERS_STORE_PATH = 'timers.json';
 
-export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry['type'], message: string, timerId?: string, groupId?: string) => void) {
+export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry['type'], message: string, itemIdentifier?: string, timerId?: string, groupId?: string) => void) {
     const getTimerDisplayName = (t: AnyTimer) => {
         return t.mode === 'exam' ? t.courseCode : t.label;
     };
@@ -72,11 +72,11 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                     const justEnteredWarning = t.remainingSeconds > settings.warningThresholdSeconds && payload.remaining_seconds <= settings.warningThresholdSeconds && payload.status === 'Running';
 
                     if (justEnded) {
-                        onLog?.('ENDED', `${getTimerDisplayName(t)}: Time up`, t.id, t.groupId);
+                        onLog?.('ENDED', `${getTimerDisplayName(t)}: Time up`, getTimerDisplayName(t), t.id, t.groupId);
                     }
 
                     if (justEnteredWarning) {
-                        onLog?.('WARNING', `${getTimerDisplayName(t)}: Entered warning period`, t.id, t.groupId);
+                        onLog?.('WARNING', `${getTimerDisplayName(t)}: Entered warning period`, getTimerDisplayName(t), t.id, t.groupId);
                     }
 
                     // 5-second countdown beeps
@@ -95,6 +95,8 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                                 text: finalText,
                                 priority: 1,
                             });
+                            // Log the final announcement text
+                            onLog?.('ANNOUNCEMENT', `${getTimerDisplayName(updated)} Final: ${finalText}`, getTimerDisplayName(updated), updated.id, updated.groupId);
                         })();
                     }
 
@@ -116,7 +118,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                                         text: finalText,
                                         priority: entry.triggerAtSeconds === 0 ? 1 : 2,
                                     });
-                                    onLog?.('ANNOUNCEMENT', `${getTimerDisplayName(updated)}: ${finalText}`, updated.id, updated.groupId);
+                                    onLog?.('ANNOUNCEMENT', `${getTimerDisplayName(updated)}: ${finalText}`, getTimerDisplayName(updated), updated.id, updated.groupId);
                                 })();
 
                                 return { ...entry, hasBeenSpoken: true };
@@ -318,7 +320,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
             setTimers(prev => prev.map(t => newTimers.find(nt => nt.id === t.id) ? { ...t, status: 'Running' } : t));
         }
 
-        onLog?.('SYSTEM', `Administrator loaded preset ${preset.name}`, undefined, groupId);
+        onLog?.('SYSTEM', `Administrator loaded preset ${preset.name}`, preset.name, undefined, groupId);
         return groupId;
     }, [onLog, settings]);
 
@@ -331,7 +333,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
             prev.map((t) => (t.id === id ? { ...t, status: 'Running' as const } : t)),
         );
         if (timer) {
-            onLog?.('STARTED', `${getTimerDisplayName(timer)}: Started`, timer.id, timer.groupId);
+            onLog?.('STARTED', `${getTimerDisplayName(timer)}: Started`, getTimerDisplayName(timer), timer.id, timer.groupId);
         }
     }, [timers, onLog]);
 
@@ -346,7 +348,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
             ),
         );
         if (timer) {
-            onLog?.('PAUSED', `${getTimerDisplayName(timer)}: Paused`, timer.id, timer.groupId);
+            onLog?.('PAUSED', `${getTimerDisplayName(timer)}: Paused`, getTimerDisplayName(timer), timer.id, timer.groupId);
         }
     }, [timers, onLog]);
 
@@ -367,7 +369,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
             ),
         );
         if (timer) {
-            onLog?.('RESET', `${getTimerDisplayName(timer)}: Reset`, timer.id, timer.groupId);
+            onLog?.('RESET', `${getTimerDisplayName(timer)}: Reset`, getTimerDisplayName(timer), timer.id, timer.groupId);
         }
     }, [timers, onLog]);
 
@@ -375,7 +377,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
         const timer = timers.find(t => t.id === id);
         await invoke('delete_timer', { id });
         if (timer) {
-            onLog?.('SYSTEM', `Deleted Timer: ${getTimerDisplayName(timer)}`, undefined, timer.groupId);
+            onLog?.('SYSTEM', `Deleted Timer: ${getTimerDisplayName(timer)}`, getTimerDisplayName(timer), undefined, timer.groupId);
         }
         setTimers((prev) => prev.filter((t) => t.id !== id));
     }, [timers, onLog]);
@@ -417,7 +419,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
             }),
         );
         if (timer) {
-            onLog?.('SYSTEM', `Added ${Math.floor(extraSeconds / 60)}m to Timer: ${getTimerDisplayName(timer)}`, timer.id, timer.groupId);
+            onLog?.('SYSTEM', `Added ${Math.floor(extraSeconds / 60)}m to Timer: ${getTimerDisplayName(timer)}`, getTimerDisplayName(timer), timer.id, timer.groupId);
         }
     }, [timers, onLog]);
 

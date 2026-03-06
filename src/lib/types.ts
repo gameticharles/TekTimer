@@ -45,6 +45,7 @@ export interface ExamLogEntry {
     timestamp: number;
     type: 'STARTED' | 'PAUSED' | 'WARNING' | 'ENDED' | 'ANNOUNCEMENT' | 'RESET' | 'SYSTEM' | 'INFO';
     message: string;
+    itemIdentifier?: string; // Course Code or Timer Label
     timerId?: string;
     groupId?: string;
 }

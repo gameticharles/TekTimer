@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Settings, Plus, Trash2, X, Edit3, Save, Image, Upload, CheckCircle2, ClipboardList } from 'lucide-react';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, ask } from '@tauri-apps/plugin-dialog';
 import type { TimerPreset, AppSettings, ExamTimer, QuizTimer } from '../lib/types';
 import AddExamTimerModal from './AddExamTimerModal';
 import QuizSetupModal from './QuizSetupModal';
@@ -37,8 +37,12 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
         setEditingPresetId(newPreset.id);
     };
 
-    const handleDeletePreset = (id: string) => {
-        if (confirm("Are you sure you want to delete this hall preset?")) {
+    const handleDeletePreset = async (id: string) => {
+        const confirmed = await ask("Are you sure you want to delete this hall preset?", {
+            title: 'Confirm Deletion',
+            kind: 'warning',
+        });
+        if (confirmed) {
             setPresets(prev => prev.filter(p => p.id !== id));
             if (editingPresetId === id) setEditingPresetId(null);
         }
@@ -218,8 +222,8 @@ export default function PresetManager({ settings, onUpdate, onClose }: Props) {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${activePreset.status === 'Started' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' :
-                                                    activePreset.status === 'Ended' ? 'bg-red-500/10 border-red-500/50 text-red-500' :
-                                                        'bg-gray-500/10 border-gray-500/50 text-gray-500'
+                                                activePreset.status === 'Ended' ? 'bg-red-500/10 border-red-500/50 text-red-500' :
+                                                    'bg-gray-500/10 border-gray-500/50 text-gray-500'
                                                 }`}>
                                                 {activePreset.status}
                                             </span>

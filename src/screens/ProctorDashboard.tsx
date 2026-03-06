@@ -187,9 +187,9 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     const missing = preset.timers.filter(t => t.mode === 'exam' && !t.attendanceSheetPath);
                     if (missing.length > 0) {
                         const courses = missing.map(m => (m as ExamTimer).courseCode).join(', ');
-                        addLog('WARNING', `Hall ${preset.name} ended with missing attendance sheets for: ${courses}`, undefined, group.id);
+                        addLog('WARNING', `Hall ${preset.name} ended with missing attendance sheets for: ${courses}`, preset.name, undefined, group.id);
                     } else {
-                        addLog('INFO', `Hall ${preset.name} ended with all attendance sheets verified.`, undefined, group.id);
+                        addLog('INFO', `Hall ${preset.name} ended with all attendance sheets verified.`, preset.name, undefined, group.id);
                     }
                 }
             }
@@ -225,7 +225,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
         );
         onUpdateSettings({ savedPresets: updatedPresets });
 
-        addLog('SYSTEM', `Administrator loaded preset ${preset.name}`, undefined, groupId);
+        addLog('SYSTEM', `Administrator loaded preset ${preset.name}`, preset.name, undefined, groupId);
         setShowPresetSelection(false);
     };
 
@@ -401,10 +401,17 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                         <button
                                             onClick={() => {
                                                 if (group.id === '__standalone__') {
-                                                    // If only quiz timers, open the first one in QuizScreen
                                                     const quizTimers = group.timers.filter(t => t.mode === 'quiz');
-                                                    if (quizTimers.length > 0 && quizTimers.length === group.timers.length) {
-                                                        onOpenQuizTimer(quizTimers[0].id);
+                                                    const examTimers = group.timers.filter(t => t.mode === 'exam');
+
+                                                    if (quizTimers.length > 0 && examTimers.length === 0) {
+                                                        if (quizTimers.length === 1) {
+                                                            onOpenQuizTimer(quizTimers[0].id);
+                                                        } else {
+                                                            // For multiple quick timers, let user click individual ones in the table
+                                                            // or go to default quiz screen
+                                                            onOpenQuiz();
+                                                        }
                                                     } else {
                                                         onOpenExam();
                                                     }
@@ -667,11 +674,8 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                     return <div className="w-2 h-2 rounded-full bg-gray-400 ring-4 ring-white dark:ring-[#1F2937] shrink-0" />;
                                 };
 
-                                // Try to find Identifier (Course Code or Label)
-                                let identifier = '';
-                                if (relatedTimer) {
-                                    identifier = relatedTimer.mode === 'exam' ? relatedTimer.courseCode : relatedTimer.label;
-                                }
+                                // Use persistent identifier if available, fallback to live timer lookup
+                                const identifier = log.itemIdentifier || (relatedTimer ? (relatedTimer.mode === 'exam' ? relatedTimer.courseCode : relatedTimer.label) : '');
 
                                 return (
                                     <div key={log.id} className="flex gap-3 group animate-in fade-in slide-in-from-right-1 duration-300">
@@ -682,13 +686,13 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                                     {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                                 </span>
                                                 {identifier && (
-                                                    <span className={`text-[8px] font-bold px-1 rounded uppercase tracking-tighter ${relatedTimer?.mode === 'exam' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
+                                                    <span className={`text-[8px] font-bold px-1 rounded uppercase tracking-tighter ${relatedTimer?.mode === 'exam' || (!relatedTimer && identifier.match(/^[A-Z]{2,4}\d{3,4}$/)) ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
                                                         {identifier}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className={`text-[11px] leading-snug ${log.type === 'ANNOUNCEMENT' ? 'text-indigo-600 dark:text-indigo-400 font-medium italic' : 'text-gray-700 dark:text-gray-300'}`}>
-                                                {log.message.includes(':') ? log.message.split(':').slice(1).join(':').trim() : log.message}
+                                                {log.message.includes(':') ? (log.message.split(':').slice(1).join(':').trim() || log.message) : log.message}
                                             </div>
                                         </div>
                                     </div>
