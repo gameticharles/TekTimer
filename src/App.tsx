@@ -13,6 +13,7 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>('proctor');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
   const { settings, updateSettings, resetSettings, loaded } = useSettings();
   const store = useTimerStore(settings);
 
@@ -63,7 +64,11 @@ export default function App() {
           settings={settings}
           onUpdateSettings={updateSettings}
           store={store}
-          onExit={() => setMode('proctor')}
+          timerId={activeTimerId ?? undefined}
+          onExit={() => {
+            setActiveTimerId(null);
+            setMode('proctor');
+          }}
           onSettings={() => setSettingsOpen(true)}
         />
       )}
@@ -96,7 +101,14 @@ export default function App() {
             setActiveGroupId(null);
             setMode('exam');
           }}
-          onOpenQuiz={() => setMode('quiz')}
+          onOpenQuiz={() => {
+            setActiveTimerId(null);
+            setMode('quiz');
+          }}
+          onOpenQuizTimer={(timerId) => {
+            setActiveTimerId(timerId);
+            setMode('quiz');
+          }}
         />
       )}
 

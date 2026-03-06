@@ -12,10 +12,11 @@ interface Props {
     onOpenGroup: (groupId: string) => void;
     onOpenExam: () => void;
     onOpenQuiz: () => void;
+    onOpenQuizTimer: (timerId: string) => void;
     store: TimerStore;
 }
 
-export default function ProctorDashboard({ settings, onUpdateSettings, onSettings, onOpenGroup, onOpenExam, onOpenQuiz, store }: Props) {
+export default function ProctorDashboard({ settings, onUpdateSettings, onSettings, onOpenGroup, onOpenExam, onOpenQuiz, onOpenQuizTimer, store }: Props) {
     const { timers, createGroupFromPreset, startGroup, pauseGroup, addExtraTimeGroup, removeGroup, startTimer, pauseTimer, resetTimer, addExtraTime, deleteTimer } = store;
     const { logs, addLog } = useProctorStore();
 
@@ -424,13 +425,25 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
                                                     {/* Course Info */}
                                                     <div className="col-span-1">
-                                                        <div className="font-bold text-xs text-gray-700 dark:text-gray-200">
-                                                            {timer.mode === 'exam' ? timer.courseCode : timer.label}
-                                                        </div>
+                                                        {timer.mode === 'quiz' ? (
+                                                            <button
+                                                                onClick={() => onOpenQuizTimer(timer.id)}
+                                                                className="text-left hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                                                                title="Open in Quick Timer view"
+                                                            >
+                                                                <div className="font-bold text-xs text-gray-700 dark:text-gray-200 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                                                                    {timer.label} <span className="text-[9px] text-amber-400 font-normal">→ Open</span>
+                                                                </div>
+                                                            </button>
+                                                        ) : (
+                                                            <div className="font-bold text-xs text-gray-700 dark:text-gray-200">
+                                                                {timer.mode === 'exam' ? timer.courseCode : (timer as AnyTimer).label}
+                                                            </div>
+                                                        )}
                                                         <div className="text-[10px] text-gray-500 mt-0.5 truncate">
                                                             {timer.mode === 'exam'
                                                                 ? `${timer.studentCount} Students • ${timer.program}`
-                                                                : 'General Timer'}
+                                                                : timer.mode === 'quiz' ? 'Quick Timer' : 'General Timer'}
                                                         </div>
                                                     </div>
 

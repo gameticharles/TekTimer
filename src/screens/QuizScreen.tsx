@@ -19,22 +19,30 @@ interface QuizScreenProps {
     onExit: () => void;
     onSettings: () => void;
     store: TimerStore;
+    timerId?: string;
 }
 
-export default function QuizScreen({ settings, onUpdateSettings, onExit, onSettings, store }: QuizScreenProps) {
-    const [showSetup, setShowSetup] = useState(true);
+export default function QuizScreen({ settings, onUpdateSettings, onExit, onSettings, store, timerId }: QuizScreenProps) {
+    // If timerId is provided, we're reopening an existing timer — skip setup
+    const existingTimer = timerId ? store.timers.find(t => t.id === timerId) as QuizTimer | undefined : undefined;
+    const [showSetup, setShowSetup] = useState(!existingTimer);
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [activeQuizId, setActiveQuizId] = useState<string | null>(timerId ?? null);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { controlsVisible } = useIdleControls();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
 
-    const timer = store.timers[0] as QuizTimer | undefined;
+    // Find the active quiz timer
+    const timer = activeQuizId
+        ? store.timers.find(t => t.id === activeQuizId) as QuizTimer | undefined
+        : undefined;
 
     // Handle timer creation
     const handleStart = useCallback(
         async (label: string, durationSeconds: number, startImmediately: boolean) => {
-            await store.createQuizTimer(label, durationSeconds, startImmediately);
+            const id = await store.createQuizTimer(label, durationSeconds, startImmediately);
+            setActiveQuizId(id);
             setShowSetup(false);
         },
         [store],
@@ -93,12 +101,10 @@ export default function QuizScreen({ settings, onUpdateSettings, onExit, onSetti
         return () => window.removeEventListener('keydown', handler);
     }, [timer, showSetup, settings.globalFontScale, store, exitFullscreen, toggleFullscreen, onUpdateSettings]);
 
-    // Handle exit — clean up timers
-    const handleExit = useCallback(async () => {
-        audioManager.stopAll();
-        await store.clearAll();
+    // Handle exit — just navigate back, timer keeps running
+    const handleExit = useCallback(() => {
         onExit();
-    }, [store, onExit]);
+    }, [onExit]);
 
     if (isBlackout) {
         return <BlackoutScreen onReveal={disableBlackout} />;
