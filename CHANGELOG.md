@@ -1,3 +1,7 @@
+## [0.3.1] - 2026-03-06
+
+- fixed logo (0ac0dfe)
+- Fixed dark mode (9b1a004)
 ## [0.3.0] - 2026-03-06
 
 Unified version
@@ -30,6 +34,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
