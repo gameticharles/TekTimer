@@ -387,7 +387,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         </div>
 
                         {/* Table Header */}
-                        <div className="grid grid-cols-6 px-6 py-3 border-b border-gray-200 dark:border-gray-800 text-[10px] font-bold text-gray-500 tracking-wider uppercase shrink-0">
+                        <div className="grid grid-cols-6 px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-[10px] font-bold text-gray-500 tracking-wider uppercase shrink-0">
                             <div className="col-span-1">Lecture Hall / ID</div>
                             <div className="col-span-1">Active Course</div>
                             <div className="col-span-1 text-center">Status</div>
@@ -399,7 +399,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         {/* Table Body */}
                         <div className="flex-1 overflow-y-auto">
                             {filteredGroups.map(group => (
-                                <div key={group.id} className="grid grid-cols-6 px-6 py-4 border-b border-gray-100 dark:border-gray-800/50 transition-colors group items-start gap-y-4">
+                                <div key={group.id} className="grid grid-cols-6 px-6 py-4 border-b border-gray-100 dark:border-gray-700/50 transition-colors group items-start gap-y-4">
 
                                     {/* Col 1: Lecture Hall Info & Global Actions */}
                                     <div className="col-span-1 pr-4">
@@ -503,7 +503,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                             const timerProgress = Math.min(100, Math.max(0, rawProgress));
 
                                             return (
-                                                <div key={timer.id} className={`grid grid-cols-5 items-center gap-x-2 ${index !== group.timers.length - 1 ? 'border-b border-gray-100 dark:border-gray-800/30 pb-3' : ''}`}>
+                                                <div key={timer.id} className={`grid grid-cols-5 items-center gap-x-2 ${index !== group.timers.length - 1 ? 'border-b border-gray-100 dark:border-gray-700/30 pb-3' : ''}`}>
 
                                                     {/* Course Info */}
                                                     <div className="col-span-1">
@@ -656,7 +656,7 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
 
                     <div className="flex-1 overflow-y-auto p-4 relative">
                         {/* Timeline line */}
-                        <div className="absolute left-6 top-4 bottom-4 w-px bg-gray-200 dark:bg-gray-800"></div>
+                        <div className="absolute left-6 top-4 bottom-4 w-px bg-gray-200 dark:bg-gray-700"></div>
 
                         <div className="space-y-6 relative">
                             {logs.map((log) => {
