@@ -14,9 +14,3 @@ export function getCardSpanClass(index: number, count: number): string {
     return (count === 3 && index === 0) ? 'col-span-2' : '';
 }
 
-export function getBaseClampKey(count: number): string {
-    if (count === 1) return 'exam_1';
-    if (count === 2) return 'exam_2';
-    if (count <= 4) return 'exam_3_4';
-    return 'exam_5';
-}

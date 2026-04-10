@@ -1,4 +1,4 @@
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Maximize2 } from 'lucide-react';
 import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 
 interface FontSizeControlProps {
@@ -6,6 +6,8 @@ interface FontSizeControlProps {
     isOverride: boolean;
     onChange: (scale: number) => void;
     onReset?: () => void;
+    /** Callback for the Fit-to-Container button. When provided, the button is rendered. */
+    onFit?: () => void;
     compact?: boolean;
 }
 
@@ -14,6 +16,7 @@ export default function FontSizeControl({
     isOverride,
     onChange,
     onReset,
+    onFit,
     compact = false,
 }: FontSizeControlProps) {
     if (compact) {
@@ -47,6 +50,24 @@ export default function FontSizeControl({
                         <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
                     )}
                 </button>
+                {onFit && (
+                    <button
+                        onClick={onFit}
+                        className={`px-2 py-1.5 rounded-lg transition-all relative font-bold text-base tracking-tight
+                          ${
+                            scale !== 100
+                                ? 'bg-gray-100 dark:bg-gray-800 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          }`}
+                        title={scale !== 100 ? `Fit to container — reset to 100% (currently ${scale}%)` : 'Already at 100% — container auto-fit active'}
+                        aria-label="Fit to container"
+                    >
+                        <Maximize2 size={14} />
+                        {scale !== 100 && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
+                        )}
+                    </button>
+                )}
             </div>
         );
     }

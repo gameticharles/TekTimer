@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil } from 'lucide-react';
-import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
-import { getBaseClampKey } from '../lib/gridLayout';
+import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil, GripVertical } from 'lucide-react';
+import { getEffectiveScale } from '../lib/fontSizeUtils';
 import FontSizeControl from './FontSizeControl';
 import ProgressBar from './ProgressBar';
 import DismissOverlay from './DismissOverlay';
@@ -24,6 +23,8 @@ interface TimerCardProps {
     onFontSizeChange: (id: string, scale: number) => void;
     onFontSizeReset: (id: string) => void;
     onUpdateSchedule?: (id: string, schedule: AnnouncementEntry[]) => void;
+    /** Drag handle event — attach to mousedown on the grip icon to start HTML5 drag. */
+    onDragHandleMouseDown?: (e: React.MouseEvent) => void;
 }
 
 function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
@@ -91,6 +92,7 @@ export default function TimerCard({
     onFontSizeChange,
     onFontSizeReset,
     onUpdateSchedule,
+    onDragHandleMouseDown,
 }: TimerCardProps) {
     const [showScheduleEditor, setShowScheduleEditor] = useState(false);
 
@@ -101,9 +103,11 @@ export default function TimerCard({
     const { bg, textColor, border, timeColor, badge, badgeColor, anim } = getCardVisualState(timer, settings);
 
     const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
-    const clampKey = getBaseClampKey(timerCount);
-    const baseClamp = getBaseClamp(clampKey);
-    const computedSize = scaleClamp(baseClamp, effectiveScale);
+    // Scale is applied as a CSS transform on top of the container-query base size.
+    // This way A+/A- still work without fighting the container query sizing.
+    const scaleTransform = effectiveScale !== 100
+        ? `scale(${effectiveScale / 100})`
+        : undefined;
 
     const beatKey = timer.status === 'Running' && timer.remainingSeconds <= 10
         ? timer.remainingSeconds
@@ -114,24 +118,35 @@ export default function TimerCard({
     return (
         <div
             className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none`}
-            style={{ '--exam-clock-size': computedSize } as React.CSSProperties}
         >
             {/* Dismiss Overlay */}
             <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} />
 
             {/* Header Area */}
             <div className={`flex justify-between items-start ${timerCount === 1 ? 'mb-8' : 'mb-6'}`}>
-                {/* Title & Info */}
-                <div className="flex-1 min-w-0 pr-4">
-                    <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
-                        {timer.courseCode || 'Untitled'}
-                        {timer.courseTitle ? `: ${timer.courseTitle}` : ''}
-                    </h3>
-                    {(timer.program || timer.studentCount > 0) && (
-                        <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-3xl lg:text-3xl' : 'text-base md:text-lg'}`}>
-                            {[timer.program, timer.studentCount > 0 ? `${timer.studentCount} Students` : null].filter(Boolean).join(' • ')}
-                        </p>
+                {/* Drag Handle + Title & Info */}
+                <div className="flex items-start gap-2 flex-1 min-w-0 pr-4">
+                    {/* Drag handle — only this grip triggers a drag, so buttons remain clickable */}
+                    {onDragHandleMouseDown && (
+                        <div
+                            onMouseDown={onDragHandleMouseDown}
+                            className="flex-shrink-0 mt-1 p-1 -ml-1 rounded cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors touch-none"
+                            title="Drag to reorder"
+                        >
+                            <GripVertical size={16} />
+                        </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                        <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
+                            {timer.courseCode || 'Untitled'}
+                            {timer.courseTitle ? `: ${timer.courseTitle}` : ''}
+                        </h3>
+                        {(timer.program || timer.studentCount > 0) && (
+                            <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-3xl lg:text-3xl' : 'text-base md:text-lg'}`}>
+                                {[timer.program, timer.studentCount > 0 ? `${timer.studentCount} Students` : null].filter(Boolean).join(' • ')}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Badge & End Time */}
@@ -147,15 +162,18 @@ export default function TimerCard({
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full mb-4 relative">
+            {/* exam-clock-container establishes CSS container context; the inner
+                exam-clock div uses min(cqw, cqh) to auto-fit. Any A+/A- override
+                is applied as a transform on the inner div. pointer-events-none
+                ensures a visually overflowing clock never blocks footer buttons. */}
+            <div className="exam-clock-container flex-1 min-h-0 w-full mb-4 relative">
                 <div
                     key={beatKey}
-                    className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full transition-colors h-full`}
+                    className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none pointer-events-none flex items-center justify-center w-full transition-colors h-full`}
+                    style={scaleTransform ? { transform: scaleTransform } : undefined}
                 >
                     <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>
-
-                {/* Time's Up Screen is handled by DismissOverlay */}
             </div>
 
             {/* Progress Bar */}
@@ -179,14 +197,17 @@ export default function TimerCard({
 
             {/* Controls */}
             <div className="flex items-center justify-between mt-auto">
-                {/* Left Side: Font Size */}
-                <FontSizeControl
-                    scale={effectiveScale}
-                    isOverride={timer.fontSizeOverride !== null}
-                    onChange={(s) => onFontSizeChange(timer.id, s)}
-                    onReset={() => onFontSizeReset(timer.id)}
-                    compact
-                />
+                {/* Left Side: Font Size + Fit-to-Container */}
+                <div className="flex items-center gap-1">
+                    <FontSizeControl
+                        scale={effectiveScale}
+                        isOverride={timer.fontSizeOverride !== null}
+                        onChange={(s) => onFontSizeChange(timer.id, s)}
+                        onReset={() => onFontSizeReset(timer.id)}
+                        onFit={() => onFontSizeChange(timer.id, 100)}
+                        compact
+                    />
+                </div>
 
                 {/* Right Side: Actions */}
                 <div className="flex items-center gap-2">

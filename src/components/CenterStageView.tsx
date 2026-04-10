@@ -7,8 +7,7 @@ import FontSizeControl from './FontSizeControl';
 import DismissOverlay from './DismissOverlay';
 import { formatTime } from '../lib/formatTime';
 import { useProjectedEndTime } from '../hooks/useProjectedEndTime';
-import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
-import { getBaseClampKey } from '../lib/gridLayout';
+import { getEffectiveScale } from '../lib/fontSizeUtils';
 
 interface CenterStageViewProps {
     timers: ExamTimer[];
@@ -142,16 +141,15 @@ export default function CenterStageView({
 
     const formattedEndTime = useProjectedEndTime(activeTimer.status, activeTimer.remainingSeconds, activeTimer.endTimeUnix);
 
-    // Font Sizing matches what would be seen in Grid View (Base clamp uses '1' timer card for the massive display)
     const effectiveScale = getEffectiveScale(settings.globalFontScale, activeTimer.fontSizeOverride);
-    const clampKey = getBaseClampKey(1);
-    const baseClamp = getBaseClamp(clampKey);
-    const computedSize = scaleClamp(baseClamp, effectiveScale);
+    // Apply scale override as a CSS transform on top of container-query auto-sizing
+    const scaleTransform = effectiveScale !== 100
+        ? `scale(${effectiveScale / 100})`
+        : undefined;
 
     return (
         <div
             className="flex flex-col h-full w-full bg-gray-50 dark:bg-black p-6 relative transition-colors"
-            style={{ '--exam-clock-size': computedSize } as React.CSSProperties}
         >
             {/* Top Toolbar */}
             <div
@@ -299,9 +297,13 @@ export default function CenterStageView({
                     )}
                 </div>
 
-                {/* Massive Clock */}
-                <div className="flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10">
-                    <div className={`exam-clock massive-clock ${timeColorClass} transition-colors tracking-tighter ${isEnded ? 'opacity-60' : ''}`} style={{ fontSize: 'var(--exam-clock-size, min(28vw, 25vh))' }}>
+                {/* Massive Clock — exam-clock-container gives it a sizing context
+                    so min(cqw, cqh) auto-fills the available space. */}
+                <div className="exam-clock-container flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10">
+                    <div
+                        className={`exam-clock massive-clock pointer-events-none ${timeColorClass} transition-colors tracking-tighter ${isEnded ? 'opacity-60' : ''}`}
+                        style={scaleTransform ? { transform: scaleTransform } : undefined}
+                    >
                         <DynamicTimeDisplay seconds={activeTimer.remainingSeconds} />
                     </div>
 
@@ -333,7 +335,7 @@ export default function CenterStageView({
                 </p>
 
                 {/* Action Buttons */}
-                <div className={`absolute bottom-8 right-8 flex items-center gap-3 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`absolute bottom-8 right-8 flex items-center gap-3 z-20 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                     <button
                         onClick={() => onAddExtraTime(activeTimer.id)}
                         disabled={activeTimer.status === 'Ended' && activeTimer.isDismissed}
@@ -373,13 +375,14 @@ export default function CenterStageView({
                     </button>
                 </div>
 
-                {/* Font Size Control - Bottom Left */}
-                <div className={`absolute bottom-8 left-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                {/* Font Size Control + Fit Button - Bottom Left */}
+                <div className={`absolute bottom-8 left-8 z-20 transition-opacity duration-300 flex items-center gap-1 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                     <FontSizeControl
                         scale={effectiveScale}
                         isOverride={activeTimer.fontSizeOverride !== null}
                         onChange={(s) => onFontSizeChange(activeTimer.id, s)}
                         onReset={() => onFontSizeReset(activeTimer.id)}
+                        onFit={() => onFontSizeChange(activeTimer.id, 100)}
                         compact
                     />
                 </div>

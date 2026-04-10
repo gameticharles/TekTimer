@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid, Presentation, Mic, Power
 } from 'lucide-react';
@@ -108,7 +108,13 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
         [store, groupId, settings.savedCourses, onUpdateSettings],
     );
 
-    // ── Drag & Drop ───────────────────────────────────────────────────
+    // ── Drag & Drop (handle-only) ──────────────────────────────────────
+    // We keep draggable=false on the wrapper by default. When the user
+    // presses the grip handle, we flip draggable=true on that specific
+    // wrapper via a ref — then restore it on dragEnd. This ensures
+    // ALL buttons inside the card remain perfectly clickable.
+    const dragWrapperRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
     const handleDragStart = (e: React.DragEvent, id: string) => {
         setDraggedId(id);
         e.dataTransfer.effectAllowed = 'move';
@@ -126,6 +132,20 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
             store.reorderTimers(draggedId, targetId);
         }
         setDraggedId(null);
+    };
+
+    const handleDragEnd = (id: string) => {
+        setDraggedId(null);
+        // Remove draggable so buttons work normally again
+        const el = dragWrapperRefs.current[id];
+        if (el) el.removeAttribute('draggable');
+    };
+
+    /** Called from the grip handle's onMouseDown inside TimerCard. */
+    const makeDraggable = (id: string) => (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const el = dragWrapperRefs.current[id];
+        if (el) el.setAttribute('draggable', 'true');
     };
 
     if (isBlackout) {
@@ -289,11 +309,11 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                     {examTimers.map((timer, index) => (
                         <div
                             key={timer.id}
-                            draggable
+                            ref={(el) => { dragWrapperRefs.current[timer.id] = el; }}
                             onDragStart={(e) => handleDragStart(e, timer.id)}
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, timer.id)}
-                            onDragEnd={() => setDraggedId(null)}
+                            onDragEnd={() => handleDragEnd(timer.id)}
                             className={getCardSpanClass(index, examTimers.length) + ' h-full min-h-0 transition-opacity'}
                             style={{ opacity: draggedId === timer.id ? 0.4 : 1 }}
                         >
@@ -311,6 +331,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                 onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
                                 onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
                                 onUpdateSchedule={(id, s) => store.updateAnnouncementSchedule(id, s)}
+                                onDragHandleMouseDown={makeDraggable(timer.id)}
                             />
                         </div>
                     ))}

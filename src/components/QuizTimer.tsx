@@ -1,7 +1,7 @@
 import type { QuizTimer as QuizTimerType, AppSettings } from '../lib/types';
 import DynamicTimeDisplay from './DynamicTimeDisplay';
 import ProgressBar from './ProgressBar';
-import { getEffectiveScale, scaleClamp, getBaseClamp } from '../lib/fontSizeUtils';
+import { getEffectiveScale } from '../lib/fontSizeUtils';
 
 interface QuizTimerProps {
     timer: QuizTimerType;
@@ -27,8 +27,10 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
     const { bg, textColor, anim, labelColor } = getVisualState(timer, settings);
 
     const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
-    const baseClamp = getBaseClamp('quiz');
-    const computedSize = scaleClamp(baseClamp, effectiveScale);
+    // Apply scale as a CSS transform on top of container-query auto-sizing
+    const scaleTransform = effectiveScale !== 100
+        ? `scale(${effectiveScale / 100})`
+        : undefined;
 
     // Use remainingSeconds as key to trigger beat animation on each second change
     const beatKey = timer.status === 'Running' && timer.remainingSeconds <= 10
@@ -36,8 +38,7 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
         : undefined;
 
     return (
-        <div className={`${bg} h-full w-full flex flex-col items-center justify-center relative transition-colors duration-500`}
-            style={{ '--quiz-clock-size': computedSize } as React.CSSProperties}>
+        <div className={`${bg} h-full w-full flex flex-col items-center justify-center relative transition-colors duration-500`}>
             {/* Label */}
             {timer.label && (
                 <p className={`${labelColor} text-xl font-medium mb-4 transition-colors duration-500`}>
@@ -46,10 +47,11 @@ export default function QuizTimerDisplay({ timer, settings }: QuizTimerProps) {
             )}
 
             {/* Clock and Progress Bar */}
-            <div className="w-full flex flex-col items-center justify-center min-h-0">
+            <div className="quiz-clock-container w-full flex flex-col items-center justify-center min-h-0 flex-1">
                 <div
                     key={beatKey}
-                    className={`quiz-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full`}
+                    className={`quiz-clock ${textColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none flex items-center justify-center w-full h-full`}
+                    style={scaleTransform ? { transform: scaleTransform } : undefined}
                 >
                     <DynamicTimeDisplay seconds={timer.remainingSeconds} />
                 </div>

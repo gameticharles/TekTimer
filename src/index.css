@@ -26,20 +26,34 @@ body {
 
 /* ─── Timer Clock Styles ─────────────────────────────────────── */
 
+/* Quiz clock container — establishes sizing context so .quiz-clock can
+   use container query units to fill the full screen display. */
+.quiz-clock-container {
+  container-type: size;
+}
+
 .quiz-clock {
-  font-size: var(--quiz-clock-size, clamp(8rem, 25vw, 22rem));
+  font-size: min(30cqw, 55cqh);
   font-variant-numeric: tabular-nums;
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1;
 }
 
+/* Inner clock text — sized relative to the container query context set on
+   .exam-clock-container. min() picks whichever axis is the bottleneck so
+   the text always fills the available space without overflowing. */
 .exam-clock {
-  font-size: var(--exam-clock-size, clamp(3rem, 9vw, 9rem));
+  font-size: min(22cqw, 45cqh);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   letter-spacing: 0.06em;
   line-height: 1;
+}
+
+/* Container that establishes the query context for .exam-clock */
+.exam-clock-container {
+  container-type: size;
 }
 
 /* ─── Reduced Motion ─────────────────────────────────────────── */
