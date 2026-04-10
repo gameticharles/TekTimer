@@ -1,3 +1,10 @@
+## [0.5.0] - 2026-04-10
+
+- fixed bugs (b72e491)
+- Completely fixed darg and drop features (cd13e06)
+- Still fixing drag and drop (ebeb505)
+- fixed font size issues (874c5a2)
+- chore: Add `clean` script to `package.json` and remove `package.json.bak`. (d6e59af)
 ## [0.4.1] - 2026-03-06
 
 added app details
@@ -49,6 +56,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
