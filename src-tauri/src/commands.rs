@@ -74,18 +74,18 @@ pub fn delete_timer(state: tauri::State<'_, AppState>, id: String) -> Result<(),
 pub fn add_extra_time(
     state: tauri::State<'_, AppState>,
     id: String,
-    extraSeconds: u64,
+    extra_seconds: u64,
 ) -> Result<TimerState, String> {
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     let timer = map.get_mut(&id).ok_or("Timer not found")?;
 
-    timer.duration_seconds += extraSeconds;
-    timer.remaining_seconds += extraSeconds;
+    timer.duration_seconds += extra_seconds;
+    timer.remaining_seconds += extra_seconds;
 
     // If currently running, push end_time forward by the same amount
     if timer.status == TimerStatus::Running {
         if let Some(end) = timer.end_time_unix.as_mut() {
-            *end += extraSeconds;
+            *end += extra_seconds;
         }
     }
 
@@ -210,7 +210,8 @@ pub fn copy_alarm_file(source_path: String, target_path: String) -> Result<(), S
     let target = Path::new(&target_path);
     if let Some(parent) = target.parent() {
         if !parent.exists() {
-            fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {}", e))?;
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create directories: {}", e))?;
         }
     }
 

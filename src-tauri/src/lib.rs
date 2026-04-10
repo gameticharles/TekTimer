@@ -1,8 +1,7 @@
 mod commands;
 mod timer;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tauri::Emitter;
 use timer::{unix_now, TimerStatus};
 

@@ -96,7 +96,6 @@ export default function TimerCard({
     onFontSizeChange,
     onFontSizeReset,
     onUpdateSchedule,
-    isBeingDragged = false,
     isDragTarget = false,
     isDraggingActive = false,
 }: TimerCardProps) {
