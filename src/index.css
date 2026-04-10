@@ -73,6 +73,24 @@ body {
   animation: drag-target-glow 0.9s ease-in-out infinite;
 }
 
+/* Outer-wrapper level drop target — applied directly to the draggable grid cell
+   so it is NEVER clipped by inner overflow:hidden or suppressed during a drag. */
+@keyframes drag-drop-target-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.9),
+                0 0 32px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(99, 162, 255, 1),
+                0 0 60px rgba(59, 130, 246, 0.65);
+  }
+}
+
+.drag-drop-target {
+  animation: drag-drop-target-glow 0.85s ease-in-out infinite;
+  z-index: 1;
+}
+
 /* ─── Reduced Motion ─────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -80,7 +98,8 @@ body {
   .animate-glow-critical,
   .animate-blink,
   .animate-beat,
-  .animate-drag-target {
+  .animate-drag-target,
+  .drag-drop-target {
     animation: none !important;
   }
 }

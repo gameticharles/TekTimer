@@ -35,9 +35,14 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    // Ref mirrors draggedId for synchronous access inside drag event closures
-    // (React state updates are async, so closures read stale null on first events)
-    const draggedIdRef = useRef<string | null>(null);
+    // Pointer-event drag tracking ref (synchronous; never stale in listeners)
+    const dragRef = useRef<{
+        sourceId: string;
+        pointerId: number;
+        startX: number;
+        startY: number;
+        active: boolean;
+    } | null>(null);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
@@ -112,65 +117,93 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
         [store, groupId, settings.savedCourses, onUpdateSettings],
     );
 
-    // ── Drag & Drop ───────────────────────────────────────────────────
-    // The grip handle inside each TimerCard is the true draggable source.
-    // Wrapper divs here are the drop zones. hoveredId tracks which card
-    // is being hovered so we can show the swap target visual.
+    // ── Pointer-event Drag & Drop ─────────────────────────────────────
+    // HTML5 Drag-and-Drop does NOT work reliably inside Tauri's WebView2
+    // on Windows (the runtime intercepts native drag events for OS-level
+    // file DnD). Instead we use pointer events: pointerdown to start
+    // tracking, window-level pointermove to activate (after 8 px threshold)
+    // and hit-test the target card via document.elementFromPoint, and
+    // pointerup to perform the swap.
 
-    /** Starts the drag. Skips if the initiating target is a button/input so
-     *  all interactive child elements remain fully clickable. */
-    const handleDragStart = (e: React.DragEvent, id: string) => {
-        const interactiveEl = (e.target as HTMLElement).closest(
+    /** Find the timer-card wrapper under a given screen coordinate. */
+    const hitTestTimerCard = (x: number, y: number): string | null => {
+        const el = document.elementFromPoint(x, y);
+        const card = el?.closest('[data-timer-id]');
+        return card?.getAttribute('data-timer-id') ?? null;
+    };
+
+    /** Begin tracking on primary-button press over a non-interactive area. */
+    const handlePointerDown = (e: React.PointerEvent, id: string) => {
+        if (e.button !== 0) return; // primary only
+        const interactive = (e.target as HTMLElement).closest(
             'button, input, select, textarea, a, [role="button"]'
         );
-        if (interactiveEl) {
-            e.preventDefault();
-            return;
-        }
-        draggedIdRef.current = id;   // sync — available immediately in all handlers
-        setDraggedId(id);            // async — used only for rendering (opacity)
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
-        // Use the card wrapper itself as the drag ghost image
-        const card = e.currentTarget as HTMLElement;
-        e.dataTransfer.setDragImage(card, card.offsetWidth / 2, 40);
+        if (interactive) return;
+        dragRef.current = {
+            sourceId: id,
+            pointerId: e.pointerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            active: false,
+        };
     };
 
-    /** Fires continuously while cursor is over a wrapper — ideal for hover state.
-     *  Calling e.preventDefault() here is what makes the cursor show as valid drop. */
-    const handleDragOver = (e: React.DragEvent, targetId: string) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        // Use ref (not state) to check current drag source synchronously
-        const src = draggedIdRef.current;
-        if (src && src !== targetId) {
-            setHoveredId((prev) => (prev === targetId ? prev : targetId));
-        }
-    };
+    // Window-level pointer listeners for move and up
+    useEffect(() => {
+        const onMove = (e: PointerEvent) => {
+            const state = dragRef.current;
+            if (!state) return;
+            // Only track the pointer that started the drag
+            if (e.pointerId !== state.pointerId) return;
 
-    /** Clear indicator only when truly leaving the wrapper (not moving to a child). */
-    const handleDragLeave = (e: React.DragEvent) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            const dx = e.clientX - state.startX;
+            const dy = e.clientY - state.startY;
+
+            // Activation threshold — prevents accidental drags from clicks
+            if (!state.active) {
+                if (Math.abs(dx) + Math.abs(dy) < 8) return;
+                state.active = true;
+                setDraggedId(state.sourceId);
+                document.body.style.cursor = 'grabbing';
+            }
+
+            // Hit-test: which card is under the cursor right now?
+            const targetId = hitTestTimerCard(e.clientX, e.clientY);
+            if (targetId && targetId !== state.sourceId) {
+                setHoveredId((prev) => (prev === targetId ? prev : targetId));
+            } else {
+                setHoveredId((prev) => (prev === null ? prev : null));
+            }
+        };
+
+        const onUp = (e: PointerEvent) => {
+            const state = dragRef.current;
+            if (!state) return;
+            if (e.pointerId !== state.pointerId) return;
+
+            if (state.active) {
+                const targetId = hitTestTimerCard(e.clientX, e.clientY);
+                if (targetId && targetId !== state.sourceId) {
+                    store.reorderTimers(state.sourceId, targetId);
+                }
+                document.body.style.cursor = '';
+            }
+
+            dragRef.current = null;
+            setDraggedId(null);
             setHoveredId(null);
-        }
-    };
+        };
 
-    const handleDrop = (e: React.DragEvent, targetId: string) => {
-        e.preventDefault();
-        const src = draggedIdRef.current;
-        if (src && src !== targetId) {
-            store.reorderTimers(src, targetId);
-        }
-        draggedIdRef.current = null;
-        setDraggedId(null);
-        setHoveredId(null);
-    };
-
-    const handleDragEnd = () => {
-        draggedIdRef.current = null;
-        setDraggedId(null);
-        setHoveredId(null);
-    };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        // Cancel on pointer leaving the window
+        window.addEventListener('pointercancel', onUp);
+        return () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+        };
+    }, [store]);
 
     if (isBlackout) {
         return <BlackoutScreen onReveal={disableBlackout} />;
@@ -330,37 +363,50 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
             {/* Content Area */}
             {viewMode === 'grid' ? (
                 <div className={getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20'}>
-                    {examTimers.map((timer, index) => (
-                        <div
-                            key={timer.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, timer.id)}
-                            onDragOver={(e) => handleDragOver(e, timer.id)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, timer.id)}
-                            onDragEnd={handleDragEnd}
-                            className={`${getCardSpanClass(index, examTimers.length)} h-full min-h-0 cursor-grab active:cursor-grabbing`}
-                        >
-                            <TimerCard
-                                timer={timer}
-                                settings={settings}
-                                timerCount={examTimers.length}
-                                onStart={store.startTimer}
-                                onPause={store.pauseTimer}
-                                onReset={store.resetTimer}
-                                onDelete={store.deleteTimer}
-                                onEdit={setEditTimerId}
-                                onDismiss={store.dismissTimer}
-                                onAddExtraTime={setExtraTimeTimerId}
-                                onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
-                                onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
-                                onUpdateSchedule={(id, s) => store.updateAnnouncementSchedule(id, s)}
-                                isBeingDragged={draggedId === timer.id}
-                                isDragTarget={hoveredId === timer.id}
-                                isDraggingActive={draggedId !== null}
-                            />
-                        </div>
-                    ))}
+                    {examTimers.map((timer, index) => {
+                        const isSource = draggedId === timer.id;
+                        const isTarget = hoveredId === timer.id;
+                        const isDragging = draggedId !== null;
+                        return (
+                            <div
+                                key={timer.id}
+                                data-timer-id={timer.id}
+                                onPointerDown={(e) => handlePointerDown(e, timer.id)}
+                                className={`
+                                    ${getCardSpanClass(index, examTimers.length)}
+                                    h-full min-h-0 select-none
+                                    cursor-grab
+                                    rounded-2xl
+                                    ${isTarget ? 'drag-drop-target' : ''}
+                                    ${isDragging ? 'touch-none' : ''}
+                                `}
+                                style={{
+                                    opacity: isSource ? 0.35 : 1,
+                                    transition: 'opacity 0.15s ease, box-shadow 0.15s ease',
+                                    cursor: isDragging ? 'grabbing' : undefined,
+                                }}
+                            >
+                                <TimerCard
+                                    timer={timer}
+                                    settings={settings}
+                                    timerCount={examTimers.length}
+                                    onStart={store.startTimer}
+                                    onPause={store.pauseTimer}
+                                    onReset={store.resetTimer}
+                                    onDelete={store.deleteTimer}
+                                    onEdit={setEditTimerId}
+                                    onDismiss={store.dismissTimer}
+                                    onAddExtraTime={setExtraTimeTimerId}
+                                    onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
+                                    onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
+                                    onUpdateSchedule={(id, s) => store.updateAnnouncementSchedule(id, s)}
+                                    isBeingDragged={isSource}
+                                    isDragTarget={isTarget}
+                                    isDraggingActive={isDragging}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <CenterStageView

@@ -125,7 +125,6 @@ export default function TimerCard({
         <div
             className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none
                 ${isDragTarget ? 'animate-drag-target' : ''}`}
-            style={{ opacity: isBeingDragged ? 0.35 : 1 }}
         >
             {/* Dismiss Overlay */}
             <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} />
@@ -142,16 +141,15 @@ export default function TimerCard({
                 </div>
             )}
 
-            {/* Drag-capture shield — rendered ONLY while a drag is in progress.
-                Sits above card content (z-10) with pointer-events: auto so that
-                any dragover fired on a child element bubbles up through this shield
-                to the outer wrapper's onDragOver, which calls e.preventDefault()
-                and shows the valid-drop cursor. Without this, deeply-nested children
-                (buttons, text spans) can absorb dragover without preventing default. */}
+            {/* Drag-capture shield — rendered ONLY while a pointer-drag is
+                in progress. Sits at z-30 above all card content so that
+                (a) buttons/controls cannot be accidentally clicked while
+                dragging a card, and (b) document.elementFromPoint during
+                the hit-test still resolves to this element, whose
+                closest('[data-timer-id]') finds the outer wrapper. */}
             {isDraggingActive && (
                 <div
-                    className="absolute inset-0 z-10 rounded-2xl"
-                    style={{ pointerEvents: 'auto' }}
+                    className="absolute inset-0 z-30 rounded-2xl"
                     aria-hidden
                 />
             )}
