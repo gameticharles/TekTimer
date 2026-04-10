@@ -56,13 +56,31 @@ body {
   container-type: size;
 }
 
+/* ─── Drag-and-Drop Target Indicator ────────────────────────── */
+
+@keyframes drag-target-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.8),
+                0 0 24px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(99, 162, 255, 1),
+                0 0 48px rgba(59, 130, 246, 0.55);
+  }
+}
+
+.animate-drag-target {
+  animation: drag-target-glow 0.9s ease-in-out infinite;
+}
+
 /* ─── Reduced Motion ─────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .animate-glow-warning,
   .animate-glow-critical,
   .animate-blink,
-  .animate-beat {
+  .animate-beat,
+  .animate-drag-target {
     animation: none !important;
   }
 }

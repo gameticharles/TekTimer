@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil, GripVertical } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil, ArrowLeftRight } from 'lucide-react';
 import { getEffectiveScale } from '../lib/fontSizeUtils';
 import FontSizeControl from './FontSizeControl';
 import ProgressBar from './ProgressBar';
@@ -23,8 +23,12 @@ interface TimerCardProps {
     onFontSizeChange: (id: string, scale: number) => void;
     onFontSizeReset: (id: string) => void;
     onUpdateSchedule?: (id: string, schedule: AnnouncementEntry[]) => void;
-    /** Drag handle event — attach to mousedown on the grip icon to start HTML5 drag. */
-    onDragHandleMouseDown?: (e: React.MouseEvent) => void;
+    /** Whether this card is currently being dragged (source). */
+    isBeingDragged?: boolean;
+    /** Whether this card is the active drop-swap target. */
+    isDragTarget?: boolean;
+    /** Whether ANY card drag is in progress (used to activate the event-capture shield). */
+    isDraggingActive?: boolean;
 }
 
 function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
@@ -92,7 +96,9 @@ export default function TimerCard({
     onFontSizeChange,
     onFontSizeReset,
     onUpdateSchedule,
-    onDragHandleMouseDown,
+    isBeingDragged = false,
+    isDragTarget = false,
+    isDraggingActive = false,
 }: TimerCardProps) {
     const [showScheduleEditor, setShowScheduleEditor] = useState(false);
 
@@ -117,36 +123,52 @@ export default function TimerCard({
 
     return (
         <div
-            className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none`}
+            className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none
+                ${isDragTarget ? 'animate-drag-target' : ''}`}
+            style={{ opacity: isBeingDragged ? 0.35 : 1 }}
         >
             {/* Dismiss Overlay */}
             <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} />
 
+            {/* Drop-swap target overlay: shown when this card is the hovered swap target */}
+            {isDragTarget && (
+                <div className="absolute inset-0 z-20 rounded-2xl bg-blue-500/10 flex items-center justify-center pointer-events-none">
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="bg-blue-500/20 backdrop-blur-sm rounded-full p-3">
+                            <ArrowLeftRight size={28} className="text-blue-400" />
+                        </div>
+                        <span className="text-blue-400 text-xs font-bold tracking-widest uppercase">Swap</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Drag-capture shield — rendered ONLY while a drag is in progress.
+                Sits above card content (z-10) with pointer-events: auto so that
+                any dragover fired on a child element bubbles up through this shield
+                to the outer wrapper's onDragOver, which calls e.preventDefault()
+                and shows the valid-drop cursor. Without this, deeply-nested children
+                (buttons, text spans) can absorb dragover without preventing default. */}
+            {isDraggingActive && (
+                <div
+                    className="absolute inset-0 z-10 rounded-2xl"
+                    style={{ pointerEvents: 'auto' }}
+                    aria-hidden
+                />
+            )}
+
             {/* Header Area */}
             <div className={`flex justify-between items-start ${timerCount === 1 ? 'mb-8' : 'mb-6'}`}>
-                {/* Drag Handle + Title & Info */}
-                <div className="flex items-start gap-2 flex-1 min-w-0 pr-4">
-                    {/* Drag handle — only this grip triggers a drag, so buttons remain clickable */}
-                    {onDragHandleMouseDown && (
-                        <div
-                            onMouseDown={onDragHandleMouseDown}
-                            className="flex-shrink-0 mt-1 p-1 -ml-1 rounded cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors touch-none"
-                            title="Drag to reorder"
-                        >
-                            <GripVertical size={16} />
-                        </div>
+                {/* Title & Info */}
+                <div className="flex-1 min-w-0 pr-4">
+                    <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
+                        {timer.courseCode || 'Untitled'}
+                        {timer.courseTitle ? `: ${timer.courseTitle}` : ''}
+                    </h3>
+                    {(timer.program || timer.studentCount > 0) && (
+                        <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-3xl lg:text-3xl' : 'text-base md:text-lg'}`}>
+                            {[timer.program, timer.studentCount > 0 ? `${timer.studentCount} Students` : null].filter(Boolean).join(' • ')}
+                        </p>
                     )}
-                    <div className="flex-1 min-w-0">
-                        <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
-                            {timer.courseCode || 'Untitled'}
-                            {timer.courseTitle ? `: ${timer.courseTitle}` : ''}
-                        </h3>
-                        {(timer.program || timer.studentCount > 0) && (
-                            <p className={`font-medium transition-colors ${timer.isDismissed ? 'text-gray-400 dark:text-gray-600' : 'text-gray-500 dark:text-gray-400'} ${timerCount === 1 ? 'text-2xl md:text-3xl lg:text-3xl' : 'text-base md:text-lg'}`}>
-                                {[timer.program, timer.studentCount > 0 ? `${timer.studentCount} Students` : null].filter(Boolean).join(' • ')}
-                            </p>
-                        )}
-                    </div>
                 </div>
 
                 {/* Badge & End Time */}

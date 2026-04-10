@@ -34,6 +34,10 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
     const [viewMode, setViewMode] = useState<'grid' | 'center'>('grid');
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const [draggedId, setDraggedId] = useState<string | null>(null);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
+    // Ref mirrors draggedId for synchronous access inside drag event closures
+    // (React state updates are async, so closures read stale null on first events)
+    const draggedIdRef = useRef<string | null>(null);
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
@@ -108,44 +112,64 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
         [store, groupId, settings.savedCourses, onUpdateSettings],
     );
 
-    // ── Drag & Drop (handle-only) ──────────────────────────────────────
-    // We keep draggable=false on the wrapper by default. When the user
-    // presses the grip handle, we flip draggable=true on that specific
-    // wrapper via a ref — then restore it on dragEnd. This ensures
-    // ALL buttons inside the card remain perfectly clickable.
-    const dragWrapperRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    // ── Drag & Drop ───────────────────────────────────────────────────
+    // The grip handle inside each TimerCard is the true draggable source.
+    // Wrapper divs here are the drop zones. hoveredId tracks which card
+    // is being hovered so we can show the swap target visual.
 
+    /** Starts the drag. Skips if the initiating target is a button/input so
+     *  all interactive child elements remain fully clickable. */
     const handleDragStart = (e: React.DragEvent, id: string) => {
-        setDraggedId(id);
+        const interactiveEl = (e.target as HTMLElement).closest(
+            'button, input, select, textarea, a, [role="button"]'
+        );
+        if (interactiveEl) {
+            e.preventDefault();
+            return;
+        }
+        draggedIdRef.current = id;   // sync — available immediately in all handlers
+        setDraggedId(id);            // async — used only for rendering (opacity)
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', id);
+        // Use the card wrapper itself as the drag ghost image
+        const card = e.currentTarget as HTMLElement;
+        e.dataTransfer.setDragImage(card, card.offsetWidth / 2, 40);
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
+    /** Fires continuously while cursor is over a wrapper — ideal for hover state.
+     *  Calling e.preventDefault() here is what makes the cursor show as valid drop. */
+    const handleDragOver = (e: React.DragEvent, targetId: string) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+        // Use ref (not state) to check current drag source synchronously
+        const src = draggedIdRef.current;
+        if (src && src !== targetId) {
+            setHoveredId((prev) => (prev === targetId ? prev : targetId));
+        }
+    };
+
+    /** Clear indicator only when truly leaving the wrapper (not moving to a child). */
+    const handleDragLeave = (e: React.DragEvent) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setHoveredId(null);
+        }
     };
 
     const handleDrop = (e: React.DragEvent, targetId: string) => {
         e.preventDefault();
-        if (draggedId && draggedId !== targetId) {
-            store.reorderTimers(draggedId, targetId);
+        const src = draggedIdRef.current;
+        if (src && src !== targetId) {
+            store.reorderTimers(src, targetId);
         }
+        draggedIdRef.current = null;
         setDraggedId(null);
+        setHoveredId(null);
     };
 
-    const handleDragEnd = (id: string) => {
+    const handleDragEnd = () => {
+        draggedIdRef.current = null;
         setDraggedId(null);
-        // Remove draggable so buttons work normally again
-        const el = dragWrapperRefs.current[id];
-        if (el) el.removeAttribute('draggable');
-    };
-
-    /** Called from the grip handle's onMouseDown inside TimerCard. */
-    const makeDraggable = (id: string) => (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const el = dragWrapperRefs.current[id];
-        if (el) el.setAttribute('draggable', 'true');
+        setHoveredId(null);
     };
 
     if (isBlackout) {
@@ -309,13 +333,13 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                     {examTimers.map((timer, index) => (
                         <div
                             key={timer.id}
-                            ref={(el) => { dragWrapperRefs.current[timer.id] = el; }}
+                            draggable
                             onDragStart={(e) => handleDragStart(e, timer.id)}
-                            onDragOver={handleDragOver}
+                            onDragOver={(e) => handleDragOver(e, timer.id)}
+                            onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, timer.id)}
-                            onDragEnd={() => handleDragEnd(timer.id)}
-                            className={getCardSpanClass(index, examTimers.length) + ' h-full min-h-0 transition-opacity'}
-                            style={{ opacity: draggedId === timer.id ? 0.4 : 1 }}
+                            onDragEnd={handleDragEnd}
+                            className={`${getCardSpanClass(index, examTimers.length)} h-full min-h-0 cursor-grab active:cursor-grabbing`}
                         >
                             <TimerCard
                                 timer={timer}
@@ -331,7 +355,9 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                 onFontSizeChange={(id, scale) => store.setFontSizeOverride(id, scale)}
                                 onFontSizeReset={(id) => store.setFontSizeOverride(id, null)}
                                 onUpdateSchedule={(id, s) => store.updateAnnouncementSchedule(id, s)}
-                                onDragHandleMouseDown={makeDraggable(timer.id)}
+                                isBeingDragged={draggedId === timer.id}
+                                isDragTarget={hoveredId === timer.id}
+                                isDraggingActive={draggedId !== null}
                             />
                         </div>
                     ))}
