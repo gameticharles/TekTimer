@@ -77,7 +77,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                 e.target instanceof HTMLTextAreaElement
             ) return;
 
-            if (e.key === 'Escape') { exitFullscreen(); return; }
+            if (e.key === 'Escape') { exitFullscreen(); setActiveCardIndex(null); return; }
             if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
             if (e.key === 'n' || e.key === 'N') {
                 if (examTimers.length < 5) setShowAddModal(true);
@@ -90,17 +90,16 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                 return;
             }
 
-            // ── Per-card shortcuts (digit keys 1-5) ────────────────────
-            const digitMatch = e.key.match(/^([1-5])$/);
+            // ── Per-card focus shortcuts (digit keys 1-9) ──────────────────
+            const digitMatch = e.key.match(/^([1-9])$/);
             if (digitMatch) {
                 const idx = parseInt(digitMatch[1]) - 1; // 0-based
-                const target = examTimers[idx];
-                if (!target) return;
-                setActiveCardIndex(idx + 1);
-                if (!e.shiftKey) {
-                    // Toggle start / pause for that card
-                    if (target.status === 'Running') store.pauseTimer(target.id);
-                    else if (target.status === 'Idle' || target.status === 'Paused') store.startTimer(target.id);
+                if (!examTimers[idx]) {
+                    // Key pressed but no card at that position — clear focus
+                    setActiveCardIndex(null);
+                } else {
+                    // Set focus only; never toggle start/pause via number key
+                    setActiveCardIndex(idx + 1);
                 }
                 return;
             }
@@ -394,7 +393,13 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
 
             {/* Content Area */}
             {viewMode === 'grid' ? (
-                <div className={getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20'}>
+                <div
+                    className={getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20'}
+                    onClick={(e) => {
+                        // Clicking directly on the grid background (not a card) clears card focus
+                        if (e.target === e.currentTarget) setActiveCardIndex(null);
+                    }}
+                >
                     {examTimers.map((timer, index) => {
                         const isSource = draggedId === timer.id;
                         const isTarget = hoveredId === timer.id;
@@ -411,7 +416,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                     rounded-2xl
                                     ${isTarget ? 'drag-drop-target' : ''}
                                     ${isDragging ? 'touch-none' : ''}
-                                    ${activeCardIndex === index + 1 ? 'ring-2 ring-blue-500/70 ring-offset-2 ring-offset-transparent' : ''}
+                                    ${examTimers.length > 1 && activeCardIndex === index + 1 ? 'ring-2 ring-blue-500/70 ring-offset-2 ring-offset-transparent' : ''}
                                 `}
                                 style={{
                                     opacity: isSource ? 0.35 : 1,
@@ -419,13 +424,15 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                     cursor: isDragging ? 'grabbing' : undefined,
                                 }}
                             >
-                                {/* Keyboard shortcut badge */}
-                                <div className={`absolute top-2 left-2 z-20 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold pointer-events-none transition-opacity duration-200
-                                    ${activeCardIndex === index + 1
-                                        ? 'bg-blue-500 text-white opacity-100'
-                                        : 'bg-gray-900/40 text-gray-300 opacity-60'}`}>
-                                    {index + 1}
-                                </div>
+                                {/* Keyboard shortcut badge — only shown with 2+ cards */}
+                                {examTimers.length > 1 && (
+                                    <div className={`absolute top-2 left-2 z-20 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold pointer-events-none transition-all duration-200
+                                        ${activeCardIndex === index + 1
+                                            ? 'bg-blue-500 text-white opacity-100 scale-110'
+                                            : 'bg-gray-900/40 text-gray-300 opacity-60'}`}>
+                                        {index + 1}
+                                    </div>
+                                )}
                                 <TimerCard
                                     timer={timer}
                                     settings={settings}

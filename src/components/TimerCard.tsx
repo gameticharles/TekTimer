@@ -272,9 +272,9 @@ export default function TimerCard({
                             Ends at {formattedEndTime}
                         </span>
                     )}
-                    {/* When idle/paused show the total duration instead */}
+                    {/* When idle/paused show the total duration — same style as 'Ends at' */}
                     {timer.status !== 'Running' && (
-                        <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
+                        <span className="text-base md:text-lg text-gray-500 dark:text-gray-400 font-medium">
                             {Math.floor(timer.durationSeconds / 3600) > 0
                                 ? `${Math.floor(timer.durationSeconds / 3600)}h ${Math.floor((timer.durationSeconds % 3600) / 60)}m exam`
                                 : `${Math.floor(timer.durationSeconds / 60)}m exam`}

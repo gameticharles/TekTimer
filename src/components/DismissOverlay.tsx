@@ -23,7 +23,13 @@ export default function DismissOverlay({ timer, settings, onDismiss, timerCount 
                 : 'text-xl md:text-2xl';
 
     return (
-        <div className="absolute inset-0 bg-red-950/30 backdrop-blur-sm flex flex-col items-center justify-center z-[15] rounded-xl">
+        <div
+            className="absolute inset-0 bg-red-950/30 backdrop-blur-sm flex flex-col items-center justify-center z-40 rounded-2xl"
+            // Stop pointer events from bubbling to the card so the controls overlay
+            // cannot be triggered while the dismiss overlay is covering the card.
+            onPointerMove={(e) => e.stopPropagation()}
+            onPointerEnter={(e) => e.stopPropagation()}
+        >
             <p className={`${msgClass} font-black text-white mb-3 text-center px-4 animate-dismiss-pulse`}>
                 {settings.endMessage}
             </p>
