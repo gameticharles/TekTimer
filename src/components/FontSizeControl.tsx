@@ -58,7 +58,7 @@ export default function FontSizeControl({
                                 ? 'bg-gray-100 dark:bg-gray-800 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                                 : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'
                             }`}
-                        title={scale !== 100 ? `Fit to container — reset to 100% (currently ${scale}%)` : 'Already at 100% — container auto-fit active'}
+                        title="Compute best-fit scale for this container"
                         aria-label="Fit to container"
                     >
                         <Maximize2 size={16} />

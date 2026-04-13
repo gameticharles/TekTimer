@@ -91,6 +91,17 @@ body {
   z-index: 1;
 }
 
+/* ─── Dismiss Overlay — soft fade animation ──────────────────── */
+
+@keyframes dismiss-fade {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+.animate-dismiss-pulse {
+  animation: dismiss-fade 3s ease-in-out infinite;
+}
+
 /* ─── Reduced Motion ─────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -99,7 +110,8 @@ body {
   .animate-blink,
   .animate-beat,
   .animate-drag-target,
-  .drag-drop-target {
+  .drag-drop-target,
+  .animate-dismiss-pulse {
     animation: none !important;
   }
 }

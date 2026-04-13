@@ -17,6 +17,7 @@ import { useBlackout } from '../hooks/useBlackout';
 import { useIdleControls } from '../hooks/useIdleControls';
 import { audioManager } from '../lib/audioManager';
 import { getGridClass, getCardSpanClass } from '../lib/gridLayout';
+import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 
 interface ExamScreenProps {
     settings: AppSettings;
@@ -35,6 +36,8 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
     const [showAnnounceModal, setShowAnnounceModal] = useState(false);
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    /** 1-based index of the card selected for font / start-pause keyboard control. */
+    const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
     // Pointer-event drag tracking ref (synchronous; never stale in listeners)
     const dragRef = useRef<{
         sourceId: string;
@@ -86,11 +89,40 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                 setViewMode((prev) => (prev === 'grid' ? 'center' : 'grid'));
                 return;
             }
+
+            // ── Per-card shortcuts (digit keys 1-5) ────────────────────
+            const digitMatch = e.key.match(/^([1-5])$/);
+            if (digitMatch) {
+                const idx = parseInt(digitMatch[1]) - 1; // 0-based
+                const target = examTimers[idx];
+                if (!target) return;
+                setActiveCardIndex(idx + 1);
+                if (!e.shiftKey) {
+                    // Toggle start / pause for that card
+                    if (target.status === 'Running') store.pauseTimer(target.id);
+                    else if (target.status === 'Idle' || target.status === 'Paused') store.startTimer(target.id);
+                }
+                return;
+            }
+
+            // ── Font size control for the active card ([ and ]) ────────
+            if (e.key === '[' || e.key === ']') {
+                e.preventDefault();
+                const idx = activeCardIndex != null ? activeCardIndex - 1 : null;
+                if (idx == null || !examTimers[idx]) return;
+                const target = examTimers[idx];
+                const current = target.fontSizeOverride ?? settings.globalFontScale;
+                const next = e.key === ']'
+                    ? Math.min(SCALE_MAX, current + SCALE_STEP)
+                    : Math.max(SCALE_MIN, current - SCALE_STEP);
+                store.setFontSizeOverride(target.id, next);
+                return;
+            }
         };
 
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [examTimers.length, store, exitFullscreen, toggleFullscreen]);
+    }, [examTimers, store, exitFullscreen, toggleFullscreen, activeCardIndex, settings.globalFontScale]);
 
     const handleExit = useCallback(() => {
         onExit();
@@ -374,11 +406,12 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                 onPointerDown={(e) => handlePointerDown(e, timer.id)}
                                 className={`
                                     ${getCardSpanClass(index, examTimers.length)}
-                                    h-full min-h-0 select-none
+                                    h-full min-h-0 select-none relative
                                     cursor-grab
                                     rounded-2xl
                                     ${isTarget ? 'drag-drop-target' : ''}
                                     ${isDragging ? 'touch-none' : ''}
+                                    ${activeCardIndex === index + 1 ? 'ring-2 ring-blue-500/70 ring-offset-2 ring-offset-transparent' : ''}
                                 `}
                                 style={{
                                     opacity: isSource ? 0.35 : 1,
@@ -386,6 +419,13 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                     cursor: isDragging ? 'grabbing' : undefined,
                                 }}
                             >
+                                {/* Keyboard shortcut badge */}
+                                <div className={`absolute top-2 left-2 z-20 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold pointer-events-none transition-opacity duration-200
+                                    ${activeCardIndex === index + 1
+                                        ? 'bg-blue-500 text-white opacity-100'
+                                        : 'bg-gray-900/40 text-gray-300 opacity-60'}`}>
+                                    {index + 1}
+                                </div>
                                 <TimerCard
                                     timer={timer}
                                     settings={settings}

@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil, ArrowLeftRight } from 'lucide-react';
 import { getEffectiveScale } from '../lib/fontSizeUtils';
+import { SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 import FontSizeControl from './FontSizeControl';
 import ProgressBar from './ProgressBar';
 import DismissOverlay from './DismissOverlay';
@@ -103,11 +104,87 @@ export default function TimerCard({
     const [overlayVisible, setOverlayVisible] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Refs for fit-to-container measurement
+    const containerRef = useRef<HTMLDivElement>(null);
+    const clockRef = useRef<HTMLDivElement>(null);
+
+    // ── Overlay visibility ──────────────────────────────────────────
     const showOverlay = useCallback(() => {
         setOverlayVisible(true);
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = setTimeout(() => setOverlayVisible(false), 1000);
-    }, []);
+        // Keep visible while schedule editor is open — re-arm timer only when closed
+        if (!showScheduleEditor) {
+            hideTimerRef.current = setTimeout(() => setOverlayVisible(false), 1000);
+        }
+    }, [showScheduleEditor]);
+
+    // Pin overlay open whenever the schedule editor is mounted
+    useEffect(() => {
+        if (showScheduleEditor) {
+            if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+            setOverlayVisible(true);
+        }
+    }, [showScheduleEditor]);
+
+    // ── Auto-dismiss ended timers ───────────────────────────────────
+    useEffect(() => {
+        if (
+            timer.status !== 'Ended' ||
+            timer.isDismissed ||
+            !settings.autoDismissAfterSeconds
+        ) return;
+        const t = setTimeout(
+            () => onDismiss(timer.id),
+            settings.autoDismissAfterSeconds * 1000
+        );
+        return () => clearTimeout(t);
+    }, [timer.status, timer.isDismissed, settings.autoDismissAfterSeconds, timer.id, onDismiss]);
+
+    // ── Space / Enter per-card shortcut ────────────────────────────
+    const handleOverlayKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                if (timer.status === 'Running') onPause(timer.id);
+                else if (timer.status === 'Idle' || timer.status === 'Paused') onStart(timer.id);
+            }
+        },
+        [timer.status, timer.id, onStart, onPause]
+    );
+
+    // ── Fit-to-container: measure actual rendered size ──────────────
+    const handleFit = useCallback(() => {
+        const container = containerRef.current;
+        const clock = clockRef.current;
+        if (!container || !clock) {
+            onFontSizeChange(timer.id, 100);
+            return;
+        }
+        // Temporarily remove the scale transform to measure the natural/auto-fit size
+        const savedTransform = clock.style.transform;
+        clock.style.transform = '';
+        const naturalW = clock.scrollWidth;
+        const naturalH = clock.scrollHeight;
+        clock.style.transform = savedTransform;
+
+        const containerW = container.clientWidth;
+        const containerH = container.clientHeight;
+
+        if (naturalW === 0 || naturalH === 0) {
+            onFontSizeChange(timer.id, 100);
+            return;
+        }
+
+        // Compute scale ratio to maximise the clock within the available container area
+        const widthRatio = containerW / naturalW;
+        const heightRatio = containerH / naturalH;
+        const fitRatio = Math.min(widthRatio, heightRatio);
+
+        // fitRatio is relative to the natural auto-fit size (which is at effectiveScale%)
+        const newScale = Math.round(fitRatio * effectiveScale);
+        const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, newScale));
+        onFontSizeChange(timer.id, clamped);
+    }, [timer.id, onFontSizeChange]); // effectiveScale accessed by closure below — safe
 
     const handleAddExtraTime = () => {
         onAddExtraTime(timer.id);
@@ -128,6 +205,9 @@ export default function TimerCard({
 
     const formattedEndTime = useProjectedEndTime(timer.status, timer.remainingSeconds, timer.endTimeUnix);
 
+    // Full title for the native tooltip
+    const fullTitle = [timer.courseCode, timer.courseTitle].filter(Boolean).join(': ');
+
     return (
         <div
             className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none
@@ -136,7 +216,7 @@ export default function TimerCard({
             onPointerEnter={showOverlay}
         >
             {/* Dismiss Overlay */}
-            <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} />
+            <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} timerCount={timerCount} />
 
             {/* Drop-swap target overlay: shown when this card is the hovered swap target */}
             {isDragTarget && (
@@ -167,7 +247,10 @@ export default function TimerCard({
             <div className={`flex justify-between items-start ${timerCount === 1 ? 'mb-8' : 'mb-6'}`}>
                 {/* Title & Info */}
                 <div className="flex-1 min-w-0 pr-4">
-                    <h3 className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}>
+                    <h3
+                        title={fullTitle}
+                        className={`font-bold truncate leading-tight transition-colors ${textColor} ${timerCount === 1 ? 'text-4xl md:text-5xl lg:text-6xl mb-2' : timerCount === 2 ? 'text-2xl mb-1' : 'text-xl mb-1'}`}
+                    >
                         {timer.courseCode || 'Untitled'}
                         {timer.courseTitle ? `: ${timer.courseTitle}` : ''}
                     </h3>
@@ -183,9 +266,18 @@ export default function TimerCard({
                     <span className={`px-4 py-1.5 text-sm md:text-base font-bold tracking-widest rounded-full mb-1.5 transition-colors ${badgeColor}`}>
                         {badge}
                     </span>
-                    {formattedEndTime && (
+                    {/* Only show projected end time while the timer is actively running */}
+                    {timer.status === 'Running' && formattedEndTime && (
                         <span className="text-base md:text-lg text-gray-500 dark:text-gray-400 font-medium">
                             Ends at {formattedEndTime}
+                        </span>
+                    )}
+                    {/* When idle/paused show the total duration instead */}
+                    {timer.status !== 'Running' && (
+                        <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
+                            {Math.floor(timer.durationSeconds / 3600) > 0
+                                ? `${Math.floor(timer.durationSeconds / 3600)}h ${Math.floor((timer.durationSeconds % 3600) / 60)}m exam`
+                                : `${Math.floor(timer.durationSeconds / 60)}m exam`}
                         </span>
                     )}
                 </div>
@@ -195,8 +287,9 @@ export default function TimerCard({
                 exam-clock div uses min(cqw, cqh) to auto-fit. Any A+/A- override
                 is applied as a transform on the inner div. pointer-events-none
                 ensures a visually overflowing clock never blocks the overlay. */}
-            <div className="exam-clock-container flex-1 min-h-0 w-full relative">
+            <div ref={containerRef} className="exam-clock-container flex-1 min-h-0 w-full relative">
                 <div
+                    ref={clockRef}
                     key={beatKey}
                     className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none pointer-events-none flex items-center justify-center w-full transition-colors h-full`}
                     style={scaleTransform ? { transform: scaleTransform } : undefined}
@@ -217,15 +310,20 @@ export default function TimerCard({
                 </div>
             )}
 
-            {/* Controls Overlay — absolute, bottom of card, fades in on hover/interaction */}
+            {/* Controls Overlay — absolute, bottom of card, fades in on hover/interaction.
+                onFocus keeps it visible when tabbing between buttons (feature #1).
+                onKeyDown wires Space/Enter to start/pause (feature #2). */}
             <div
+                tabIndex={-1}
                 className={`absolute bottom-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between
                     rounded-b-2xl backdrop-blur-md
                     bg-white/80 dark:bg-gray-900/85
                     border-t border-gray-200/60 dark:border-gray-700/60
-                    transition-all duration-300 ease-in-out
+                    transition-all duration-300 ease-in-out outline-none
                     ${overlayVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1 pointer-events-none'}`}
                 onPointerMove={showOverlay}
+                onFocus={showOverlay}
+                onKeyDown={handleOverlayKeyDown}
             >
                 {/* Left Side: Font Size + Fit-to-Container */}
                 <div className="flex items-center gap-1">
@@ -234,7 +332,7 @@ export default function TimerCard({
                         isOverride={timer.fontSizeOverride !== null}
                         onChange={(s) => onFontSizeChange(timer.id, s)}
                         onReset={() => onFontSizeReset(timer.id)}
-                        onFit={() => onFontSizeChange(timer.id, 100)}
+                        onFit={handleFit}
                         compact
                     />
                 </div>

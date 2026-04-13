@@ -114,6 +114,8 @@ export interface AppSettings {
     showProgressBar: boolean;
     progressBarHeight: number;
     theme: 'system' | 'light' | 'dark';
+    /** Automatically dismiss ended timers after N seconds. null = disabled. */
+    autoDismissAfterSeconds: number | null;
     ignoreCompletedInCenterStage: boolean;
 
     // ─── Announcements ───────────────────────────────────────────────
@@ -152,6 +154,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showProgressBar: true,
     progressBarHeight: 20, // Default 20px
     theme: 'system',
+    autoDismissAfterSeconds: null,
     ignoreCompletedInCenterStage: true,
 
     announcementsEnabled: true,

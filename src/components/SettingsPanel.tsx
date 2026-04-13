@@ -420,6 +420,39 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                             />
                             <p className="text-xs text-gray-500 mt-1">{settings.endMessage.length}/60 characters</p>
                         </div>
+
+                        {/* Auto-dismiss */}
+                        <div className="flex flex-col gap-3 mt-4 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto-dismiss ended timers</span>
+                                <button
+                                    onClick={() => onUpdate({ autoDismissAfterSeconds: settings.autoDismissAfterSeconds ? null : 60 })}
+                                    className={`relative w-11 h-6 rounded-full transition-colors ${settings.autoDismissAfterSeconds ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                >
+                                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.autoDismissAfterSeconds ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                            </div>
+                            {settings.autoDismissAfterSeconds && (
+                                <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Dismiss after</label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {[30, 60, 120, 300].map((sec) => (
+                                            <button
+                                                key={sec}
+                                                onClick={() => onUpdate({ autoDismissAfterSeconds: sec })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${settings.autoDismissAfterSeconds === sec
+                                                    ? 'bg-emerald-600 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                    }`}
+                                            >
+                                                {sec < 60 ? `${sec}s` : `${sec / 60} min`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">Silences alarm and hides the end overlay automatically</p>
+                                </div>
+                            )}
+                        </div>
                     </section>
 
                     {/* ─── ANNOUNCEMENTS ──────────────────────────────── */}
