@@ -1,3 +1,15 @@
+## [0.5.5] - 2026-04-13
+
+- Fixed the auto fit to container (61731e7)
+- implement Grid layouts for 2 timers (b556f12)
+- Implemented: Press . (dot) while a card is focused (48b60d4)
+- Fix 1 ÔÇö Rust add_extra_time accepts negative values Fix 2 ÔÇö Space/Enter double-firing Fix 3 ÔÇö Fit-to-container now actually measures (0f3dd53)
+- Fix 1 ÔÇö Space/Enter to start/pause the focused card Fix 2 ÔÇö Fit-to-container now actually works Fix 3 ÔÇö ExtraTimeModal supports negative values (ce66c67)
+- Fix 1 ÔÇö Duration style matches "Ends at" Fix 2 ÔÇö Card focus mechanism Fix 3 ÔÇö Card number badge hidden when only 1 card Fix 4 ÔÇö Dismiss overlay is fully topmost (c1aefd5)
+- implemented: 1. Overlay stays open on focus 2. Space/Enter per-card shortcut 3. Auto-dismiss 4. Title tooltip 5. Fit = actual measurement (bd93c36)
+- reduced the bugs (1ef989b)
+- fixed timer overlay (4c02e6b)
+- fixed font control (9bd78a3)
 ## [0.5.0] - 2026-04-10
 
 - fixed bugs (b72e491)
@@ -56,6 +68,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
