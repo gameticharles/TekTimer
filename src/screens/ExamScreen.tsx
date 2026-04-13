@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid, Presentation, Mic, Power
 } from 'lucide-react';
-import TimerCard from '../components/TimerCard';
+import TimerCard, { type TimerCardHandle } from '../components/TimerCard';
 import AddExamTimerModal from '../components/AddExamTimerModal';
 import EditExamTimerModal from '../components/EditExamTimerModal';
 import ExtraTimeModal from '../components/ExtraTimeModal';
@@ -38,6 +38,8 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     /** 1-based index of the card selected for font / start-pause keyboard control. */
     const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
+    /** Refs to each TimerCard's imperative handle, indexed 0-4 (up to 5 cards). */
+    const cardRefs = useRef<Array<TimerCardHandle | null>>([null, null, null, null, null]);
     // Pointer-event drag tracking ref (synchronous; never stale in listeners)
     const dragRef = useRef<{
         sourceId: string;
@@ -125,6 +127,14 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                     ? Math.min(SCALE_MAX, current + SCALE_STEP)
                     : Math.max(SCALE_MIN, current - SCALE_STEP);
                 store.setFontSizeOverride(target.id, next);
+                return;
+            }
+
+            // ── Dot key: fit-to-container for the active card ─────────────
+            if (e.key === '.') {
+                if (activeCardIndex == null) return;
+                e.preventDefault();
+                cardRefs.current[activeCardIndex - 1]?.triggerFit();
                 return;
             }
         };
@@ -444,6 +454,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                     </div>
                                 )}
                                 <TimerCard
+                                    ref={(el) => { cardRefs.current[index] = el; }}
                                     timer={timer}
                                     settings={settings}
                                     timerCount={examTimers.length}

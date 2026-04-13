@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil, ArrowLeftRight } from 'lucide-react';
 import { getEffectiveScale } from '../lib/fontSizeUtils';
 import { SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
@@ -9,6 +9,11 @@ import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
 import DynamicTimeDisplay from './DynamicTimeDisplay';
 import { useProjectedEndTime } from '../hooks/useProjectedEndTime';
 import type { ExamTimer, AppSettings, AnnouncementEntry } from '../lib/types';
+
+/** Imperative handle exposed via forwardRef so a parent can trigger fit-to-container. */
+export interface TimerCardHandle {
+    triggerFit: () => void;
+}
 
 interface TimerCardProps {
     timer: ExamTimer;
@@ -83,7 +88,7 @@ function getCardVisualState(timer: ExamTimer, settings: AppSettings) {
     return state;
 }
 
-export default function TimerCard({
+export default forwardRef<TimerCardHandle, TimerCardProps>(function TimerCard({
     timer,
     settings,
     timerCount,
@@ -99,7 +104,7 @@ export default function TimerCard({
     onUpdateSchedule,
     isDragTarget = false,
     isDraggingActive = false,
-}: TimerCardProps) {
+}, ref) {
     const [showScheduleEditor, setShowScheduleEditor] = useState(false);
     const [overlayVisible, setOverlayVisible] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -202,6 +207,9 @@ export default function TimerCard({
     const handleAddExtraTime = () => {
         onAddExtraTime(timer.id);
     };
+
+    // Expose triggerFit so ExamScreen can call it via a ref
+    useImperativeHandle(ref, () => ({ triggerFit: handleFit }), [handleFit]);
 
     // Scale is applied as a CSS transform on top of the container-query base size.
     // This way A+/A- still work without fighting the container query sizing.
@@ -433,4 +441,4 @@ export default function TimerCard({
             )}
         </div>
     );
-}
+});
