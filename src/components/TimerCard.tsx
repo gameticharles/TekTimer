@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Play, Pause, RotateCcw, X, Clock, Mic, Pencil, ArrowLeftRight } from 'lucide-react';
 import { getEffectiveScale } from '../lib/fontSizeUtils';
 import FontSizeControl from './FontSizeControl';
@@ -100,6 +100,14 @@ export default function TimerCard({
     isDraggingActive = false,
 }: TimerCardProps) {
     const [showScheduleEditor, setShowScheduleEditor] = useState(false);
+    const [overlayVisible, setOverlayVisible] = useState(false);
+    const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const showOverlay = useCallback(() => {
+        setOverlayVisible(true);
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = setTimeout(() => setOverlayVisible(false), 2000);
+    }, []);
 
     const handleAddExtraTime = () => {
         onAddExtraTime(timer.id);
@@ -124,6 +132,8 @@ export default function TimerCard({
         <div
             className={`${bg} border ${border} rounded-2xl p-5 md:p-6 lg:p-8 flex flex-col relative overflow-hidden transition-all duration-300 h-full w-full shadow-lg dark:shadow-none
                 ${isDragTarget ? 'animate-drag-target' : ''}`}
+            onPointerMove={showOverlay}
+            onPointerEnter={showOverlay}
         >
             {/* Dismiss Overlay */}
             <DismissOverlay timer={timer} settings={settings} onDismiss={onDismiss} />
@@ -184,8 +194,8 @@ export default function TimerCard({
             {/* exam-clock-container establishes CSS container context; the inner
                 exam-clock div uses min(cqw, cqh) to auto-fit. Any A+/A- override
                 is applied as a transform on the inner div. pointer-events-none
-                ensures a visually overflowing clock never blocks footer buttons. */}
-            <div className="exam-clock-container flex-1 min-h-0 w-full mb-4 relative">
+                ensures a visually overflowing clock never blocks the overlay. */}
+            <div className="exam-clock-container flex-1 min-h-0 w-full relative">
                 <div
                     key={beatKey}
                     className={`exam-clock ${timeColor} ${anim} ${beatKey !== undefined ? 'animate-beat' : ''} select-none pointer-events-none flex items-center justify-center w-full transition-colors h-full`}
@@ -195,9 +205,9 @@ export default function TimerCard({
                 </div>
             </div>
 
-            {/* Progress Bar */}
+            {/* Progress Bar — sits flush above the overlay */}
             {settings.showProgressBar && (
-                <div className="mb-4 w-full">
+                <div className="w-full mt-2">
                     <ProgressBar
                         remainingSeconds={timer.remainingSeconds}
                         durationSeconds={timer.durationSeconds}
@@ -207,15 +217,16 @@ export default function TimerCard({
                 </div>
             )}
 
-            {/* Time Remaining Label below progress bar */}
-            <div className="w-full flex justify-center mb-6">
-                <p className={`uppercase tracking-widest text-sm font-bold ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
-                    Time Remaining
-                </p>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center justify-between mt-auto">
+            {/* Controls Overlay — absolute, bottom of card, fades in on hover/interaction */}
+            <div
+                className={`absolute bottom-0 left-0 right-0 z-10 px-4 py-3 flex items-center justify-between
+                    rounded-b-2xl backdrop-blur-md
+                    bg-white/80 dark:bg-gray-900/85
+                    border-t border-gray-200/60 dark:border-gray-700/60
+                    transition-all duration-300 ease-in-out
+                    ${overlayVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1 pointer-events-none'}`}
+                onPointerMove={showOverlay}
+            >
                 {/* Left Side: Font Size + Fit-to-Container */}
                 <div className="flex items-center gap-1">
                     <FontSizeControl
@@ -230,11 +241,18 @@ export default function TimerCard({
 
                 {/* Right Side: Actions */}
                 <div className="flex items-center gap-2">
+                    {/* Time Remaining Label */}
+                    <span className={`uppercase tracking-widest text-xs font-bold hidden sm:block mr-1 ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
+                        Time Remaining
+                    </span>
+
+                    <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block" />
+
                     {/* Add Time */}
                     <button
                         onClick={handleAddExtraTime}
                         disabled={timer.status === 'Ended' && timer.isDismissed}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
                         title="Add extra time"
                     >
                         <Clock size={14} />
@@ -245,7 +263,7 @@ export default function TimerCard({
                     {(timer.status === 'Idle' || timer.status === 'Paused') && (
                         <button
                             onClick={() => onStart(timer.id)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm shadow-emerald-600/20 transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm shadow-emerald-600/20 transition-colors"
                         >
                             <Play size={14} fill="currentColor" />
                             {timer.status === 'Idle' ? 'Start' : 'Resume'}
@@ -254,7 +272,7 @@ export default function TimerCard({
                     {timer.status === 'Running' && (
                         <button
                             onClick={() => onPause(timer.id)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold shadow-sm shadow-amber-500/20 transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold shadow-sm shadow-amber-500/20 transition-colors"
                         >
                             <Pause size={14} fill="currentColor" />
                             Pause
@@ -265,20 +283,20 @@ export default function TimerCard({
                     <button
                         onClick={() => onReset(timer.id)}
                         disabled={timer.status === 'Idle'}
-                        className="p-2 rounded-xl text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:text-gray-400 dark:bg-gray-800 dark:hover:text-white dark:hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                        className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:text-gray-400 dark:bg-gray-800 dark:hover:text-white dark:hover:bg-gray-700 disabled:opacity-40 transition-colors"
                         aria-label="Reset"
                         title="Reset"
                     >
                         <RotateCcw size={16} />
                     </button>
 
-                    {/* Menu / Edit / Delete */}
-                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+                    {/* Divider */}
+                    <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
                     {onUpdateSchedule && settings.announcementsEnabled && (
                         <button
                             onClick={() => setShowScheduleEditor(true)}
-                            className="p-2 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
+                            className="p-1.5 rounded-xl text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors"
                             title="Announcements"
                         >
                             <Mic size={16} />
@@ -288,7 +306,7 @@ export default function TimerCard({
                     {onEdit && (
                         <button
                             onClick={() => onEdit(timer.id)}
-                            className="p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+                            className="p-1.5 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
                             title="Edit"
                         >
                             <Pencil size={16} />
@@ -297,7 +315,7 @@ export default function TimerCard({
 
                     <button
                         onClick={() => onDelete(timer.id)}
-                        className="p-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                        className="p-1.5 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors"
                         title="Delete"
                     >
                         <X size={16} />
