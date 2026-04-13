@@ -8,6 +8,7 @@ import DismissOverlay from './DismissOverlay';
 import { formatTime } from '../lib/formatTime';
 import { useProjectedEndTime } from '../hooks/useProjectedEndTime';
 import { getEffectiveScale } from '../lib/fontSizeUtils';
+import { SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 
 interface CenterStageViewProps {
     timers: ExamTimer[];
@@ -56,6 +57,10 @@ export default function CenterStageView({
     const [activeIndex, setActiveIndex] = useState(0);
     const [isAutoCycling, setIsAutoCycling] = useState(true);
     const cycleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Refs for fit-to-container measurement (mirrors TimerCard logic)
+    const containerRef = useRef<HTMLDivElement>(null);
+    const clockRef = useRef<HTMLDivElement>(null);
 
     // Auto-cycle logic
     const jumpToNext = useCallback(() => {
@@ -113,6 +118,56 @@ export default function CenterStageView({
 
     const safeActiveIndex = activeIndex >= timers.length ? 0 : activeIndex;
     const activeTimer = timers[safeActiveIndex];
+
+    // ── Fit-to-container ─ mirrors the logic in TimerCard ────────────────────
+    const handleFit = useCallback(() => {
+        const container = containerRef.current;
+        const clock = clockRef.current;
+        if (!container || !clock) return;
+
+        const contentEl = clock.firstElementChild as HTMLElement | null;
+        if (!contentEl) return;
+
+        const savedTransform = clock.style.transform;
+        clock.style.transform = 'none';
+        const contentRect = contentEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        clock.style.transform = savedTransform;
+
+        const contentW = contentRect.width;
+        const contentH = contentRect.height;
+        const containerW = containerRect.width;
+        const containerH = containerRect.height;
+
+        if (contentW === 0 || contentH === 0 || containerW === 0 || containerH === 0) return;
+
+        const fitRatio = Math.min(containerW / contentW, containerH / contentH);
+        const newScale = Math.round(fitRatio * 100 * 0.92);
+        const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, newScale));
+        onFontSizeChange(activeTimer.id, clamped);
+    }, [activeTimer.id, onFontSizeChange]);
+
+    // Auto-fit on container resize (window, fullscreen, etc.)
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        let debounce: ReturnType<typeof setTimeout> | null = null;
+        const observer = new ResizeObserver(() => {
+            if (debounce) clearTimeout(debounce);
+            debounce = setTimeout(() => { handleFit(); }, 150);
+        });
+        observer.observe(container);
+        return () => {
+            observer.disconnect();
+            if (debounce) clearTimeout(debounce);
+        };
+    }, [handleFit]);
+
+    // Re-fit when the active tab changes (same container, new timer)
+    useEffect(() => {
+        const debounce = setTimeout(() => { handleFit(); }, 50);
+        return () => clearTimeout(debounce);
+    }, [safeActiveIndex, handleFit]);
 
     const isEnded = activeTimer.status === 'Ended';
     const isWarning = activeTimer.status === 'Running' && activeTimer.remainingSeconds <= settings.warningThresholdSeconds;
@@ -297,10 +352,13 @@ export default function CenterStageView({
                     )}
                 </div>
 
-                {/* Massive Clock — exam-clock-container gives it a sizing context
-                    so min(cqw, cqh) auto-fills the available space. */}
-                <div className="exam-clock-container flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10">
+                {/* Massive Clock */}
+                <div
+                    ref={containerRef}
+                    className="exam-clock-container flex-1 flex flex-col items-center justify-center w-full min-h-[300px] relative z-10"
+                >
                     <div
+                        ref={clockRef}
                         className={`exam-clock massive-clock pointer-events-none ${timeColorClass} transition-colors tracking-tighter ${isEnded ? 'opacity-60' : ''}`}
                         style={scaleTransform ? { transform: scaleTransform } : undefined}
                     >
@@ -382,7 +440,7 @@ export default function CenterStageView({
                         isOverride={activeTimer.fontSizeOverride !== null}
                         onChange={(s) => onFontSizeChange(activeTimer.id, s)}
                         onReset={() => onFontSizeReset(activeTimer.id)}
-                        onFit={() => onFontSizeChange(activeTimer.id, 100)}
+                        onFit={handleFit}
                         compact
                     />
                 </div>

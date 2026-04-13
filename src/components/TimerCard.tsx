@@ -211,6 +211,27 @@ export default forwardRef<TimerCardHandle, TimerCardProps>(function TimerCard({
     // Expose triggerFit so ExamScreen can call it via a ref
     useImperativeHandle(ref, () => ({ triggerFit: handleFit }), [handleFit]);
 
+    // ── Auto-fit on container resize ────────────────────────────────────
+    // Fires whenever the card's container changes size for any reason:
+    // window resize, grid layout change (A/B/C), drag-swap, etc.
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        let debounce: ReturnType<typeof setTimeout> | null = null;
+
+        const observer = new ResizeObserver(() => {
+            if (debounce) clearTimeout(debounce);
+            debounce = setTimeout(() => { handleFit(); }, 150);
+        });
+
+        observer.observe(container);
+        return () => {
+            observer.disconnect();
+            if (debounce) clearTimeout(debounce);
+        };
+    }, [handleFit]); // handleFit is stable (useCallback with stable deps)
+
     // Scale is applied as a CSS transform on top of the container-query base size.
     // This way A+/A- still work without fighting the container query sizing.
     const scaleTransform = effectiveScale !== 100
