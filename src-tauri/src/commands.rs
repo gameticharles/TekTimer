@@ -74,23 +74,31 @@ pub fn delete_timer(state: tauri::State<'_, AppState>, id: String) -> Result<(),
 pub fn add_extra_time(
     state: tauri::State<'_, AppState>,
     id: String,
-    extra_seconds: u64,
+    extra_seconds: i64,
 ) -> Result<TimerState, String> {
     let mut map = state.timers.lock().map_err(|e| e.to_string())?;
     let timer = map.get_mut(&id).ok_or("Timer not found")?;
 
-    timer.duration_seconds += extra_seconds;
-    timer.remaining_seconds += extra_seconds;
+    // Use i64 arithmetic to avoid underflow; clamp to 0
+    let new_remaining = (timer.remaining_seconds as i64 + extra_seconds).max(0) as u64;
+    let new_duration = (timer.duration_seconds as i64 + extra_seconds).max(0) as u64;
 
-    // If currently running, push end_time forward by the same amount
+    timer.duration_seconds = new_duration;
+    timer.remaining_seconds = new_remaining;
+
+    // If currently running, adjust end_time accordingly
     if timer.status == TimerStatus::Running {
         if let Some(end) = timer.end_time_unix.as_mut() {
-            *end += extra_seconds;
+            *end = (*end as i64 + extra_seconds).max(0) as u64;
         }
     }
 
-    // If the timer had ended and we added time, revive it
-    if timer.status == TimerStatus::Ended {
+    if new_remaining == 0 {
+        // Subtracted past zero — end the timer
+        timer.status = TimerStatus::Ended;
+        timer.end_time_unix = None;
+    } else if timer.status == TimerStatus::Ended {
+        // Added time back to an ended timer — revive it
         let now = unix_now();
         timer.end_time_unix = Some(now + timer.remaining_seconds);
         timer.status = TimerStatus::Running;
@@ -98,6 +106,7 @@ pub fn add_extra_time(
 
     Ok(timer.clone())
 }
+
 
 #[tauri::command]
 pub fn update_timer(

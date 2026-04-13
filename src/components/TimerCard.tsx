@@ -140,23 +140,17 @@ export default function TimerCard({
         return () => clearTimeout(t);
     }, [timer.status, timer.isDismissed, settings.autoDismissAfterSeconds, timer.id, onDismiss]);
 
-    // ── Space / Enter per-card shortcut ────────────────────────────
-    const handleOverlayKeyDown = useCallback(
-        (e: React.KeyboardEvent) => {
-            if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                if (timer.status === 'Running') onPause(timer.id);
-                else if (timer.status === 'Idle' || timer.status === 'Paused') onStart(timer.id);
-            }
-        },
-        [timer.status, timer.id, onStart, onPause]
-    );
-
     const { bg, textColor, border, timeColor, badge, badgeColor, anim } = getCardVisualState(timer, settings);
 
     const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
 
-    // ── Fit-to-container: measure actual rendered size ──────────────
+    // ── Fit-to-container: measure actual rendered content size ─────────
+    // The clock div (clockRef) has `w-full h-full` — its own dimensions always
+    // equal the container. We need to measure its child (DynamicTimeDisplay),
+    // which has natural content dimensions driven by the CSS container query.
+    // We temporarily remove the scale transform so getBoundingClientRect() on the
+    // child reflects the true layout dimensions (transforms don't affect layout
+    // but DO affect getBoundingClientRect).
     const handleFit = useCallback(() => {
         const container = containerRef.current;
         const clock = clockRef.current;
@@ -164,34 +158,46 @@ export default function TimerCard({
             onFontSizeChange(timer.id, 100);
             return;
         }
-        // Temporarily reset the scale transform to measure the natural/auto-fit size
-        const savedTransform = clock.style.transform;
-        clock.style.transform = 'scale(1)';
 
-        // Force a layout pass so the browser measures at scale(1)
-        const naturalW = clock.scrollWidth;
-        const naturalH = clock.scrollHeight;
-        clock.style.transform = savedTransform;
-
-        const containerW = container.clientWidth;
-        const containerH = container.clientHeight;
-
-        if (naturalW === 0 || naturalH === 0) {
+        const contentEl = clock.firstElementChild as HTMLElement | null;
+        if (!contentEl) {
             onFontSizeChange(timer.id, 100);
             return;
         }
 
-        // Compute scale ratio to maximise the clock within the available container area.
-        // naturalW/H are at scale(1) which corresponds to effectiveScale%,
-        // so multiply by effectiveScale to get the absolute target.
-        const widthRatio = containerW / naturalW;
-        const heightRatio = containerH / naturalH;
+        // Remove the transform so we measure the content's natural (container-query) size
+        const savedTransform = clock.style.transform;
+        clock.style.transform = 'none';
+
+        // getBoundingClientRect() now reflects layout size without any scale transform
+        const contentRect = contentEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        // Restore immediately
+        clock.style.transform = savedTransform;
+
+        const contentW = contentRect.width;
+        const contentH = contentRect.height;
+        const containerW = containerRect.width;
+        const containerH = containerRect.height;
+
+        if (contentW === 0 || contentH === 0 || containerW === 0 || containerH === 0) {
+            onFontSizeChange(timer.id, 100);
+            return;
+        }
+
+        // At scale=100% (transform none), contentW/H is the natural render size.
+        // We want to scale the visual content to fill the container.
+        // newScale = 100 * min(containerW/contentW, containerH/contentH)
+        const widthRatio = containerW / contentW;
+        const heightRatio = containerH / contentH;
         const fitRatio = Math.min(widthRatio, heightRatio);
 
-        const newScale = Math.round(fitRatio * effectiveScale);
+        // Apply a small padding factor so the text doesn't butt against the edge
+        const newScale = Math.round(fitRatio * 100 * 0.92);
         const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, newScale));
         onFontSizeChange(timer.id, clamped);
-    }, [timer.id, onFontSizeChange, effectiveScale]);
+    }, [timer.id, onFontSizeChange]);
 
     const handleAddExtraTime = () => {
         onAddExtraTime(timer.id);
@@ -327,7 +333,6 @@ export default function TimerCard({
                     ${overlayVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1 pointer-events-none'}`}
                 onPointerMove={showOverlay}
                 onFocus={showOverlay}
-                onKeyDown={handleOverlayKeyDown}
             >
                 {/* Left Side: Font Size + Fit-to-Container */}
                 <div className="flex items-center gap-1">
