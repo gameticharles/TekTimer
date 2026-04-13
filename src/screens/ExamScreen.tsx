@@ -90,17 +90,27 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                 return;
             }
 
-            // ── Per-card focus shortcuts (digit keys 1-9) ──────────────────
-            const digitMatch = e.key.match(/^([1-9])$/);
+            // ── Per-card focus shortcuts (digit keys 0-9) ──────────────────
+            const digitMatch = e.key.match(/^([0-9])$/);
             if (digitMatch) {
-                const idx = parseInt(digitMatch[1]) - 1; // 0-based
-                if (!examTimers[idx]) {
-                    // Key pressed but no card at that position — clear focus
+                const digit = parseInt(digitMatch[1]);
+                if (digit === 0 || !examTimers[digit - 1]) {
+                    // 0 or digit beyond card count — clear focus
                     setActiveCardIndex(null);
                 } else {
-                    // Set focus only; never toggle start/pause via number key
-                    setActiveCardIndex(idx + 1);
+                    setActiveCardIndex(digit);
                 }
+                return;
+            }
+
+            // ── Space / Enter: start/pause the focused card ─────────────
+            if (e.key === ' ' || e.key === 'Enter') {
+                if (activeCardIndex == null) return;
+                const target = examTimers[activeCardIndex - 1];
+                if (!target) return;
+                e.preventDefault();
+                if (target.status === 'Running') store.pauseTimer(target.id);
+                else if (target.status === 'Idle' || target.status === 'Paused') store.startTimer(target.id);
                 return;
             }
 

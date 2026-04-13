@@ -152,6 +152,10 @@ export default function TimerCard({
         [timer.status, timer.id, onStart, onPause]
     );
 
+    const { bg, textColor, border, timeColor, badge, badgeColor, anim } = getCardVisualState(timer, settings);
+
+    const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
+
     // ── Fit-to-container: measure actual rendered size ──────────────
     const handleFit = useCallback(() => {
         const container = containerRef.current;
@@ -160,9 +164,11 @@ export default function TimerCard({
             onFontSizeChange(timer.id, 100);
             return;
         }
-        // Temporarily remove the scale transform to measure the natural/auto-fit size
+        // Temporarily reset the scale transform to measure the natural/auto-fit size
         const savedTransform = clock.style.transform;
-        clock.style.transform = '';
+        clock.style.transform = 'scale(1)';
+
+        // Force a layout pass so the browser measures at scale(1)
         const naturalW = clock.scrollWidth;
         const naturalH = clock.scrollHeight;
         clock.style.transform = savedTransform;
@@ -175,24 +181,22 @@ export default function TimerCard({
             return;
         }
 
-        // Compute scale ratio to maximise the clock within the available container area
+        // Compute scale ratio to maximise the clock within the available container area.
+        // naturalW/H are at scale(1) which corresponds to effectiveScale%,
+        // so multiply by effectiveScale to get the absolute target.
         const widthRatio = containerW / naturalW;
         const heightRatio = containerH / naturalH;
         const fitRatio = Math.min(widthRatio, heightRatio);
 
-        // fitRatio is relative to the natural auto-fit size (which is at effectiveScale%)
         const newScale = Math.round(fitRatio * effectiveScale);
         const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, newScale));
         onFontSizeChange(timer.id, clamped);
-    }, [timer.id, onFontSizeChange]); // effectiveScale accessed by closure below — safe
+    }, [timer.id, onFontSizeChange, effectiveScale]);
 
     const handleAddExtraTime = () => {
         onAddExtraTime(timer.id);
     };
 
-    const { bg, textColor, border, timeColor, badge, badgeColor, anim } = getCardVisualState(timer, settings);
-
-    const effectiveScale = getEffectiveScale(settings.globalFontScale, timer.fontSizeOverride);
     // Scale is applied as a CSS transform on top of the container-query base size.
     // This way A+/A- still work without fighting the container query sizing.
     const scaleTransform = effectiveScale !== 100

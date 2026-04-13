@@ -438,17 +438,26 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
         setTimers((prev) =>
             prev.map((t) => {
                 if (t.id !== id) return t;
+                const newRemaining = Math.max(0, t.remainingSeconds + extraSeconds);
+                const newDuration = Math.max(0, t.durationSeconds + extraSeconds);
+                const ended = newRemaining <= 0;
                 return {
                     ...t,
-                    durationSeconds: t.durationSeconds + extraSeconds,
-                    remainingSeconds: t.remainingSeconds + extraSeconds,
-                    status: t.status === 'Ended' ? ('Running' as const) : t.status,
-                    isDismissed: false,
+                    durationSeconds: newDuration,
+                    remainingSeconds: newRemaining,
+                    status: ended
+                        ? ('Ended' as const)
+                        : t.status === 'Ended'
+                            ? ('Running' as const)
+                            : t.status,
+                    isDismissed: ended ? t.isDismissed : false,
                 };
             }),
         );
         if (timer) {
-            onLog?.('SYSTEM', `Added ${Math.floor(extraSeconds / 60)}m to Timer: ${getTimerDisplayName(timer)}`, getTimerDisplayName(timer), timer.id, timer.groupId);
+            const absMins = Math.abs(Math.floor(extraSeconds / 60));
+            const verb = extraSeconds >= 0 ? 'Added' : 'Removed';
+            onLog?.('SYSTEM', `${verb} ${absMins}m ${extraSeconds >= 0 ? 'to' : 'from'} Timer: ${getTimerDisplayName(timer)}`, getTimerDisplayName(timer), timer.id, timer.groupId);
         }
     }, [timers, onLog]);
 
