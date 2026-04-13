@@ -106,7 +106,7 @@ export default function TimerCard({
     const showOverlay = useCallback(() => {
         setOverlayVisible(true);
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = setTimeout(() => setOverlayVisible(false), 2000);
+        hideTimerRef.current = setTimeout(() => setOverlayVisible(false), 1000);
     }, []);
 
     const handleAddExtraTime = () => {
@@ -241,13 +241,6 @@ export default function TimerCard({
 
                 {/* Right Side: Actions */}
                 <div className="flex items-center gap-2">
-                    {/* Time Remaining Label */}
-                    <span className={`uppercase tracking-widest text-xs font-bold hidden sm:block mr-1 ${timer.status === 'Running' ? 'text-gray-400 dark:text-gray-500' : timeColor}`}>
-                        Time Remaining
-                    </span>
-
-                    <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-
                     {/* Add Time */}
                     <button
                         onClick={handleAddExtraTime}
