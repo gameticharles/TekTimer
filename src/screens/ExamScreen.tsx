@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import React from 'react';
 import {
-    Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid, Presentation, Mic, Power
+    Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid,
+    Presentation, Mic, Power, ArrowLeftRight
 } from 'lucide-react';
 import TimerCard, { type TimerCardHandle } from '../components/TimerCard';
 import AddExamTimerModal from '../components/AddExamTimerModal';
@@ -18,6 +20,29 @@ import { useIdleControls } from '../hooks/useIdleControls';
 import { audioManager } from '../lib/audioManager';
 import { getGridClass, getCardSpanClass } from '../lib/gridLayout';
 import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
+
+// ── 2-timer layout variants ──────────────────────────────────────────────────
+type TwoTimerMode = 'side-by-side' | 'stacked' | 'primary-secondary';
+
+// Inline SVG icons for the three layout modes (no extra dependencies)
+const LayoutIconSideBySide = () => (
+    <svg viewBox="0 0 20 14" fill="currentColor" width="18" height="13">
+        <rect x="0" y="0" width="9" height="14" rx="1.5" />
+        <rect x="11" y="0" width="9" height="14" rx="1.5" />
+    </svg>
+);
+const LayoutIconStacked = () => (
+    <svg viewBox="0 0 20 14" fill="currentColor" width="18" height="13">
+        <rect x="0" y="0" width="20" height="6" rx="1.5" />
+        <rect x="0" y="8" width="20" height="6" rx="1.5" />
+    </svg>
+);
+const LayoutIconPrimarySecondary = () => (
+    <svg viewBox="0 0 20 14" fill="currentColor" width="18" height="13">
+        <rect x="0" y="0" width="12" height="14" rx="1.5" />
+        <rect x="14" y="0" width="6" height="14" rx="1.5" />
+    </svg>
+);
 
 interface ExamScreenProps {
     settings: AppSettings;
@@ -40,6 +65,10 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
     const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
     /** Refs to each TimerCard's imperative handle, indexed 0-4 (up to 5 cards). */
     const cardRefs = useRef<Array<TimerCardHandle | null>>([null, null, null, null, null]);
+    /** Layout mode for 2-timer display. */
+    const [twoTimerMode, setTwoTimerMode] = useState<TwoTimerMode>('side-by-side');
+    /** Manually pinned primary timer id; null = auto (picks the one with less time remaining). */
+    const [primaryTimerId, setPrimaryTimerId] = useState<string | null>(null);
     // Pointer-event drag tracking ref (synchronous; never stale in listeners)
     const dragRef = useRef<{
         sourceId: string;
@@ -58,6 +87,38 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
         : (store.timers.filter(t => t.mode === 'exam') as ExamTimer[]);
     const hasRunning = examTimers.some((t) => t.status === 'Running');
     const hasPaused = examTimers.some((t) => t.status === 'Paused');
+
+    // ── 2-timer layout derived state ──────────────────────────────────────
+    // Auto-primary = timer with the least remaining time (most urgent)
+    const effectivePrimaryId = examTimers.length === 2
+        ? (primaryTimerId && examTimers.some(t => t.id === primaryTimerId)
+            ? primaryTimerId
+            : [...examTimers].sort((a, b) => a.remainingSeconds - b.remainingSeconds)[0]?.id ?? null)
+        : null;
+
+    // In primary-secondary mode: put primary card first so it occupies the larger column
+    const orderedTimers = (twoTimerMode === 'primary-secondary' && examTimers.length === 2 && effectivePrimaryId)
+        ? [...examTimers].sort(a => a.id === effectivePrimaryId ? -1 : 1)
+        : examTimers;
+
+    // Grid container class + style — custom handling for 2-timer layouts
+    const gridConfig = (() => {
+        const base = 'grid h-screen w-screen gap-4 p-4 pt-24 pb-20';
+        if (examTimers.length === 2) {
+            switch (twoTimerMode) {
+                case 'side-by-side':
+                    return { className: `${base} grid-cols-2 grid-rows-1`, style: {} as React.CSSProperties };
+                case 'stacked':
+                    return { className: `${base} grid-cols-1 grid-rows-2`, style: {} as React.CSSProperties };
+                case 'primary-secondary':
+                    return { className: `${base} grid-rows-1`, style: { gridTemplateColumns: '3fr 2fr' } as React.CSSProperties };
+            }
+        }
+        return {
+            className: getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20',
+            style: {} as React.CSSProperties,
+        };
+    })();
 
     // Audio integration for all timers
     useEffect(() => {
@@ -379,6 +440,46 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                             {viewMode === 'grid' ? <Presentation size={18} /> : <LayoutGrid size={18} />}
                         </button>
 
+                        {/* 2-Timer Layout Toggle — only visible when exactly 2 timers */}
+                        {examTimers.length === 2 && (
+                            <>
+                                <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-1" />
+                                <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-xl">
+                                    {([
+                                        { mode: 'side-by-side', Icon: LayoutIconSideBySide, label: 'Side by Side (A)' },
+                                        { mode: 'stacked', Icon: LayoutIconStacked, label: 'Stacked (B)' },
+                                        { mode: 'primary-secondary', Icon: LayoutIconPrimarySecondary, label: 'Primary / Secondary (C)' },
+                                    ] as const).map(({ mode, Icon, label }) => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setTwoTimerMode(mode)}
+                                            title={label}
+                                            className={`p-2 rounded-lg transition-colors ${
+                                                twoTimerMode === mode
+                                                    ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            <Icon />
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Swap Primary — only in primary-secondary mode */}
+                                {twoTimerMode === 'primary-secondary' && (
+                                    <button
+                                        onClick={() => {
+                                            const other = examTimers.find(t => t.id !== effectivePrimaryId);
+                                            if (other) setPrimaryTimerId(other.id);
+                                        }}
+                                        title="Swap Primary card"
+                                        className="p-2.5 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-amber-100 hover:text-amber-600 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 transition-colors"
+                                    >
+                                        <ArrowLeftRight size={16} />
+                                    </button>
+                                )}
+                            </>
+                        )}
+
                         <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 mx-1 hidden sm:block" />
 
                         {/* Settings */}
@@ -414,13 +515,14 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
             {/* Content Area */}
             {viewMode === 'grid' ? (
                 <div
-                    className={getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20'}
+                    className={gridConfig.className}
+                    style={gridConfig.style}
                     onClick={(e) => {
                         // Clicking directly on the grid background (not a card) clears card focus
                         if (e.target === e.currentTarget) setActiveCardIndex(null);
                     }}
                 >
-                    {examTimers.map((timer, index) => {
+                    {orderedTimers.map((timer, index) => {
                         const isSource = draggedId === timer.id;
                         const isTarget = hoveredId === timer.id;
                         const isDragging = draggedId !== null;
