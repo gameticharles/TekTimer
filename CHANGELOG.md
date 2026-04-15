@@ -1,3 +1,7 @@
+## [0.5.6] - 2026-04-15
+
+- improved usuability (c823bd1)
+- Fix 1 - Announcement theme fixed Fix 2 - Dialog overflow of Announcement Schedule Editor, Edit Exam Timer Modal and Extra Time Adjustment Modal (8a451bb)
 ## [0.5.5] - 2026-04-13
 
 - Fixed the auto fit to container (61731e7)
@@ -68,6 +72,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
