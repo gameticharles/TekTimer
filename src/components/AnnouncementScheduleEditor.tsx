@@ -50,15 +50,15 @@ export default function AnnouncementScheduleEditor({ timer, settings, onSave, on
     }, [schedule]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col h-[80vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col h-[80vh] overflow-hidden transition-colors">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-800/50 shrink-0">
-                    <h2 className="text-lg font-bold text-white">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 shrink-0 transition-colors">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                         Announcement Schedule — {'courseCode' in timer ? timer.courseCode : timer.label}
                     </h2>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white rounded-lg transition-colors">
+                    <button onClick={onClose} className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
                         <X size={18} />
                     </button>
                 </div>
@@ -66,18 +66,18 @@ export default function AnnouncementScheduleEditor({ timer, settings, onSave, on
                 {/* List */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {sortedSchedule.map((entry) => (
-                        <div key={entry.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 flex gap-4">
+                        <div key={entry.id} className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex gap-4 shadow-sm dark:shadow-none transition-colors">
 
                             {/* Left Column: Time & Controls */}
                             <div className="w-24 shrink-0 flex flex-col gap-3">
                                 <div>
-                                    <label className="block text-xs text-gray-400 mb-1">Min Left</label>
+                                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 transition-colors">Min Left</label>
                                     <input
                                         type="number"
                                         min="0"
                                         value={Math.floor(entry.triggerAtSeconds / 60)}
                                         onChange={(e) => handleUpdate(entry.id, { triggerAtSeconds: Math.max(0, parseInt(e.target.value) || 0) * 60 })}
-                                        className="w-full bg-gray-900 border border-gray-600 rounded-md px-2 py-1.5 text-white text-sm focus:outline-none focus:border-emerald-500"
+                                        className="w-full bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                                     />
                                 </div>
 
@@ -100,13 +100,13 @@ export default function AnnouncementScheduleEditor({ timer, settings, onSave, on
                                     value={entry.message}
                                     onChange={(e) => handleUpdate(entry.id, { message: e.target.value })}
                                     rows={2}
-                                    className={`w-full bg-gray-900 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 resize-none ${!entry.enabled && 'opacity-50'}`}
+                                    className={`w-full bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500 resize-none transition-colors ${!entry.enabled && 'opacity-50'}`}
                                 />
 
                                 {entry.enabled && entry.message.trim() && (
-                                    <div className="text-xs text-gray-500 bg-gray-900/50 p-2 rounded border border-gray-800 line-clamp-2">
-                                        <span className="font-semibold text-gray-400">Preview: </span>
-                                        <span className="italic text-gray-300">"{resolveTemplate(entry.message, timer)}"</span>
+                                    <div className="text-xs text-gray-600 dark:text-gray-500 bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-100 dark:border-gray-800 line-clamp-2 transition-colors">
+                                        <span className="font-semibold text-gray-700 dark:text-gray-400">Preview: </span>
+                                        <span className="italic text-gray-600 dark:text-gray-300">"{resolveTemplate(entry.message, timer)}"</span>
                                     </div>
                                 )}
                             </div>
@@ -115,37 +115,37 @@ export default function AnnouncementScheduleEditor({ timer, settings, onSave, on
                     ))}
 
                     {schedule.length === 0 && (
-                        <p className="text-center text-gray-500 py-8">No announcements scheduled.</p>
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-8">No announcements scheduled.</p>
                     )}
                 </div>
 
                 {/* Variable Hints */}
-                <div className="px-6 py-3 bg-gray-900 border-t border-gray-800 text-xs text-gray-500 shrink-0">
+                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 shrink-0 transition-colors">
                     Variables: {'{program}'}, {'{courseCode}'}, {'{courseTitle}'}, {'{label}'}, {'{remainingMinutes}'}, {'{remainingSeconds}'}, {'{remainingWords}'}, {'{elapsedMinutes}'}, {'{totalMinutes}'}, {'{studentCount}'}
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 bg-gray-800/80 border-t border-gray-800 flex justify-between shrink-0">
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/80 border-t border-gray-200 dark:border-gray-800 flex justify-between shrink-0 transition-colors">
                     <div className="flex gap-2">
                         <button
                             onClick={handleAdd}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-700 text-white font-medium hover:bg-gray-600 transition-colors text-sm"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
                         >
                             <Plus size={16} /> Add Entry
                         </button>
                         <button
                             onClick={handleReset}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-400 font-medium hover:text-white hover:bg-gray-700 transition-colors text-sm"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-500 dark:text-gray-400 font-medium hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm"
                         >
                             <RotateCcw size={14} /> Defaults
                         </button>
                     </div>
 
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="px-5 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 font-medium transition-colors">
+                        <button onClick={onClose} className="px-5 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 font-medium transition-colors">
                             Cancel
                         </button>
-                        <button onClick={handleSave} className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors">
+                        <button onClick={handleSave} className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors shadow-lg shadow-emerald-600/20">
                             Save Schedule
                         </button>
                     </div>
