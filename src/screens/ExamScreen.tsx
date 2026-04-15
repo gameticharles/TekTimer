@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import React from 'react';
 import {
     Plus, Pause, Play, Moon, Settings, Maximize, Minimize, ArrowLeft, LayoutGrid,
-    Presentation, Mic, Power, ArrowLeftRight
+    Presentation, Mic, Power, ArrowLeftRight, Images
 } from 'lucide-react';
 import TimerCard, { type TimerCardHandle } from '../components/TimerCard';
 import AddExamTimerModal from '../components/AddExamTimerModal';
@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import BlackoutScreen from '../components/BlackoutScreen';
 import CenterStageView from '../components/CenterStageView';
 import AnnouncementModal from '../components/AnnouncementModal';
+import ExamSlideshow from '../components/ExamSlideshow';
 import type { AppSettings, ExamTimer } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useFullscreen } from '../hooks/useFullscreen';
@@ -80,6 +81,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
     const { isFullscreen, toggle: toggleFullscreen, exit: exitFullscreen } = useFullscreen();
     const { isBlackout, enableBlackout, disableBlackout } = useBlackout();
     const { controlsVisible } = useIdleControls();
+    const [slideshowManualShow, setSlideshowManualShow] = useState(false);
 
     // Filter timers: only exam-mode timers, optionally filtered by groupId
     const examTimers = groupId
@@ -499,6 +501,21 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                             <Moon size={18} />
                         </button>
 
+                        {/* Slideshow toggle */}
+                        {settings.slideshowEnabled && settings.slideshowMedia.length > 0 && (
+                            <button
+                                onClick={() => setSlideshowManualShow(prev => !prev)}
+                                className={`p-2.5 rounded-xl transition-all hidden lg:block ${
+                                    slideshowManualShow
+                                        ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
+                                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-800'
+                                }`}
+                                title={slideshowManualShow ? 'Hide Slideshow' : 'Show Slideshow'}
+                            >
+                                <Images size={18} />
+                            </button>
+                        )}
+
                         {/* Exit */}
                         <button
                             onClick={handleExit}
@@ -598,6 +615,16 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                     onToggleFullscreen={toggleFullscreen}
                     isFullscreen={isFullscreen}
                     onAnnounce={() => setShowAnnounceModal(true)}
+                />
+            )}
+
+            {/* Exam Slideshow — ambient overlay for grid view */}
+            {viewMode === 'grid' && (
+                <ExamSlideshow
+                    settings={settings}
+                    timers={examTimers}
+                    isManuallyShown={slideshowManualShow}
+                    onManualDismiss={() => setSlideshowManualShow(false)}
                 />
             )}
 

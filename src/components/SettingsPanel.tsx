@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw
+    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw, Trash2, Images
 } from 'lucide-react';
 import { getTTSProvider } from '../lib/tts/getTTSProvider';
-import type { AppSettings } from '../lib/types';
+import type { AppSettings, MediaSlide } from '../lib/types';
 import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { appDataDir, join } from '@tauri-apps/api/path';
@@ -53,9 +53,31 @@ function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings,
 export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: SettingsPanelProps) {
     const [testPlaying, setTestPlaying] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isUploadingMedia, setIsUploadingMedia] = useState(false);
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [updateMessage, setUpdateMessage] = useState<string | null>(null);
     const [isEditingDefaultSchedule, setIsEditingDefaultSchedule] = useState(false);
+
+    const handleAddDefaultMedia = async () => {
+        try {
+            setIsUploadingMedia(true);
+            const defaults = await invoke<MediaSlide[]>('ensure_default_slideshow_assets');
+            // Check for duplicates (by name/path) before adding
+            const existingPaths = new Set(settings.slideshowMedia.map(m => m.path));
+            const newMedia = defaults.filter(d => !existingPaths.has(d.path));
+
+            if (newMedia.length > 0) {
+                onUpdate({
+                    slideshowMedia: [...settings.slideshowMedia, ...newMedia]
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load default media:', error);
+            alert('Failed to load default images: ' + String(error));
+        } finally {
+            setIsUploadingMedia(false);
+        }
+    };
 
     const handleCheckUpdate = async () => {
         try {
@@ -618,6 +640,181 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                     />
                                 </div>
                                 <p className="text-xs text-gray-500">Requires Ollama running locally.</p>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* ─── SLIDESHOW ──────────────────────────────────── */}
+                    <section>
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Exam Notices Slideshow</h3>
+
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"><Images size={16} /> Enable Slideshow</span>
+                            <button
+                                onClick={() => onUpdate({ slideshowEnabled: !settings.slideshowEnabled })}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.slideshowEnabled ? 'bg-violet-500 dark:bg-violet-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                            >
+                                <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.slideshowEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        {settings.slideshowEnabled && (
+                            <div className="space-y-4 pl-2 border-l-2 border-violet-200 dark:border-violet-800">
+                                {/* Backdrop Opacity */}
+                                <div>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                        Backdrop Opacity — {settings.slideshowOpacity}%
+                                    </label>
+                                    <input
+                                        type="range" min={5} max={100} step={1}
+                                        value={settings.slideshowOpacity}
+                                        onChange={(e) => onUpdate({ slideshowOpacity: Number(e.target.value) })}
+                                        className="w-full accent-violet-500"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Lower = more transparent markers &bull; 100% = fully opaque background.</p>
+                                </div>
+
+                                {/* Slide duration */}
+                                <div>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Seconds per Slide</label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {[5, 10, 20, 30, 60].map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => onUpdate({ slideshowSlideDuration: s })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${settings.slideshowSlideDuration === s
+                                                    ? 'bg-violet-600 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                    }`}
+                                            >{s}s</button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Phase timing */}
+                                <div className="space-y-2">
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300">Auto-show phases</label>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-500">Start phase (first N min)</span>
+                                        <input
+                                            type="number" min={1} max={30} value={settings.slideshowPhaseStartMinutes}
+                                            onChange={(e) => onUpdate({ slideshowPhaseStartMinutes: Number(e.target.value) })}
+                                            className="w-16 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white text-center focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-500">End phase (last N min)</span>
+                                        <input
+                                            type="number" min={1} max={60} value={settings.slideshowPhaseEndMinutes}
+                                            onChange={(e) => onUpdate({ slideshowPhaseEndMinutes: Number(e.target.value) })}
+                                            className="w-16 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-900 dark:text-white text-center focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300">
+                                        Media Files ({settings.slideshowMedia.length})
+                                    </label>
+                                    <button
+                                        onClick={handleAddDefaultMedia}
+                                        disabled={isUploadingMedia}
+                                        className="text-[10px] font-bold text-violet-500 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300 uppercase tracking-widest flex items-center gap-1 transition-colors"
+                                    >
+                                        <RotateCcw size={10} /> Restore Defaults
+                                    </button>
+                                </div>
+
+                                {settings.slideshowMedia.length > 0 && (
+                                    <div className="space-y-2 mb-3">
+                                        {settings.slideshowMedia.map((slide) => (
+                                            <div key={slide.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                <div className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0 text-[11px] font-bold text-gray-500">
+                                                    {slide.type === 'video' ? '▶' : '🖼'}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{slide.name}</p>
+                                                    <div className="flex gap-1 mt-0.5">
+                                                        {(['start', 'middle', 'end'] as const).map(phase => (
+                                                            <button
+                                                                key={phase}
+                                                                onClick={() => {
+                                                                    const updated = settings.slideshowMedia.map(m =>
+                                                                        m.id === slide.id
+                                                                            ? { ...m, phases: m.phases.includes(phase) ? m.phases.filter(p => p !== phase) : [...m.phases, phase] }
+                                                                            : m
+                                                                    );
+                                                                    onUpdate({ slideshowMedia: updated });
+                                                                }}
+                                                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase transition-colors ${slide.phases.includes(phase)
+                                                                    ? phase === 'start' ? 'bg-blue-500 text-white' : phase === 'middle' ? 'bg-gray-500 text-white' : 'bg-amber-500 text-white'
+                                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                                                                    }`}
+                                                            >{phase}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={async () => {
+                                                        await invoke('delete_media_file', { filePath: slide.path }).catch(() => { });
+                                                        onUpdate({ slideshowMedia: settings.slideshowMedia.filter(m => m.id !== slide.id) });
+                                                    }}
+                                                    className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                                                    title="Remove"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <button
+                                    disabled={isUploadingMedia}
+                                    onClick={async () => {
+                                        try {
+                                            setIsUploadingMedia(true);
+                                            const selected = await openDialog({
+                                                multiple: true,
+                                                filters: [{ name: 'Media', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov'] }]
+                                            }) as string[] | null;
+
+                                            if (!selected || selected.length === 0) return;
+
+                                            const dataDir = await appDataDir();
+                                            const mediaDir = await join(dataDir, 'slideshow');
+                                            if (!(await exists(mediaDir))) await mkdir(mediaDir, { recursive: true });
+
+                                            const newSlides: import('../lib/types').MediaSlide[] = [];
+                                            for (const srcPath of selected) {
+                                                const fname = srcPath.split(/[/\\]/).pop() || 'media';
+                                                const ext = fname.split('.').pop()?.toLowerCase() || '';
+                                                const isVideo = ['mp4', 'webm', 'mov'].includes(ext);
+                                                const sanitized = fname.replace(/[^a-zA-Z0-9._\-]/g, '_');
+                                                const targetPath = await join(mediaDir, `${Date.now()}_${sanitized}`);
+                                                await invoke('copy_media_file', { sourcePath: srcPath, targetPath });
+                                                newSlides.push({
+                                                    id: `slide-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                                                    path: targetPath,
+                                                    name: fname,
+                                                    type: isVideo ? 'video' : 'image',
+                                                    phases: ['start', 'middle', 'end'],
+                                                });
+                                            }
+                                            onUpdate({ slideshowMedia: [...settings.slideshowMedia, ...newSlides] });
+                                        } catch (err) {
+                                            console.error('Media upload error:', err);
+                                            alert('Failed to add media: ' + String(err));
+                                        } finally {
+                                            setIsUploadingMedia(false);
+                                        }
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition disabled:opacity-50"
+                                >
+                                    {isUploadingMedia ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                    {isUploadingMedia ? 'Copying...' : 'Add Images / Videos'}
+                                </button>
+                                <p className="text-xs text-gray-500 mt-1.5">Toggle phase tags (Start / Middle / End) on each slide to control when it appears automatically.</p>
                             </div>
                         )}
                     </section>

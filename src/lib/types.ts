@@ -100,6 +100,17 @@ export interface TimerTickPayload {
     end_time_unix: number | null;
 }
 
+// ─── Slideshow Media ─────────────────────────────────────────────
+export type SlidePhase = 'start' | 'middle' | 'end';
+
+export interface MediaSlide {
+    id: string;
+    path: string;      // Absolute path in app data directory
+    name: string;      // Display-friendly filename
+    type: 'image' | 'video';
+    phases: SlidePhase[]; // Which exam phases this slide appears in
+}
+
 // ─── Settings ────────────────────────────────────────────────────
 export type TTSProviderType = 'web-speech' | 'custom-api';
 
@@ -118,6 +129,14 @@ export interface AppSettings {
     autoDismissAfterSeconds: number | null;
     ignoreCompletedInCenterStage: boolean;
     showStatusLegend: boolean;
+
+    // ─── Slideshow ───────────────────────────────────────────────────
+    slideshowEnabled: boolean;
+    slideshowOpacity: number;          // 5–40, displayed as %
+    slideshowSlideDuration: number;    // seconds per slide
+    slideshowPhaseStartMinutes: number; // show during first N minutes
+    slideshowPhaseEndMinutes: number;   // show during last N minutes
+    slideshowMedia: MediaSlide[];
 
     // ─── Announcements ───────────────────────────────────────────────
     announcementsEnabled: boolean;
@@ -158,6 +177,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     autoDismissAfterSeconds: null,
     ignoreCompletedInCenterStage: true,
     showStatusLegend: false,
+
+    slideshowEnabled: false,
+    slideshowOpacity: 20,
+    slideshowSlideDuration: 5,
+    slideshowPhaseStartMinutes: 5,
+    slideshowPhaseEndMinutes: 10,
+    slideshowMedia: [],
 
     announcementsEnabled: true,
     ttsProvider: 'web-speech',

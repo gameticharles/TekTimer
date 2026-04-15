@@ -227,3 +227,110 @@ pub fn copy_alarm_file(source_path: String, target_path: String) -> Result<(), S
     fs::copy(&source_path, &target_path).map_err(|e| format!("Failed to copy file: {}", e))?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn copy_media_file(source_path: String, target_path: String) -> Result<(), String> {
+    use std::fs;
+    use std::path::Path;
+
+    let target = Path::new(&target_path);
+    if let Some(parent) = target.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create directories: {}", e))?;
+        }
+    }
+
+    fs::copy(&source_path, &target_path).map_err(|e| format!("Failed to copy file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_media_file(file_path: String) -> Result<(), String> {
+    use std::fs;
+    use std::path::Path;
+
+    let path = Path::new(&file_path);
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| format!("Failed to delete file: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn read_file_as_base64(file_path: String) -> Result<String, String> {
+    use std::fs;
+    use std::path::Path;
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+    let path = Path::new(&file_path);
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "mp4" => "video/mp4",
+        "webm" => "video/webm",
+        "mov" => "video/quicktime",
+        _ => "application/octet-stream",
+    };
+
+    let bytes = fs::read(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let b64 = STANDARD.encode(&bytes);
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct MediaSlide {
+    pub id: String,
+    pub path: String,
+    pub name: String,
+    pub r#type: String,
+    pub phases: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn ensure_default_slideshow_assets(app: tauri::AppHandle) -> Result<Vec<MediaSlide>, String> {
+    use std::fs;
+    use tauri::Manager;
+    use uuid::Uuid;
+
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let slideshow_dir = app_dir.join("slideshow");
+
+    if !slideshow_dir.exists() {
+        fs::create_dir_all(&slideshow_dir).map_err(|e| e.to_string())?;
+    }
+
+    // List of default images we bundled
+    let default_files = vec!["image1.jpeg", "image2.jpeg", "image3.jpeg", "image4.jpeg", "image5.jpeg"];
+    let mut slides = Vec::new();
+
+    for filename in default_files {
+        let dest_path = slideshow_dir.join(filename);
+        
+        // In Tauri v2, resources are accessed via path().resource_dir()
+        let resource_dir = app.path().resource_dir().map_err(|e| format!("Could not get resource dir: {}", e))?;
+        let bundled_path = resource_dir.join("resources").join("slideshow").join(filename);
+
+        if !dest_path.exists() {
+            fs::copy(&bundled_path, &dest_path).map_err(|e| format!("Failed to copy {} to AppData: {}", filename, e))?;
+        }
+
+        slides.push(MediaSlide {
+            id: Uuid::new_v4().to_string(),
+            path: dest_path.to_string_lossy().into_owned(),
+            name: filename.to_string(),
+            r#type: "image".to_string(),
+            phases: vec!["start".to_string(), "middle".to_string(), "end".to_string()],
+        });
+    }
+
+    Ok(slides)
+}

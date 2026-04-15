@@ -65,6 +65,10 @@ pub fn run() {
             commands::sync_timers,
             commands::update_timer,
             commands::copy_alarm_file,
+            commands::copy_media_file,
+            commands::delete_media_file,
+            commands::read_file_as_base64,
+            commands::ensure_default_slideshow_assets,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
