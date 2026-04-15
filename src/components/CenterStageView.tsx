@@ -204,13 +204,15 @@ export default function CenterStageView({
 
     return (
         <div
-            className="flex flex-col h-full w-full bg-gray-50 dark:bg-black p-6 relative transition-colors"
+            className="h-full w-full bg-gray-50 dark:bg-black relative transition-colors overflow-hidden"
         >
-            {/* Top Toolbar */}
-            <div
-                className={`flex items-center justify-between mb-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                data-tauri-drag-region
-            >
+            {/* Top Overlay (Toolbar + Tabs) */}
+            <div className={`absolute top-0 left-0 right-0 z-30 transition-all duration-500 ease-in-out ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}`}>
+                {/* Top Toolbar */}
+                <div
+                    className="flex items-center justify-between px-8 py-6 bg-white/80 dark:bg-black/70 backdrop-blur-xl border-b border-gray-200/30 dark:border-gray-800/30 shadow-lg"
+                    data-tauri-drag-region
+                >
                 {/* Header Title */}
                 <div className="flex items-center gap-4">
                     <div className="bg-emerald-600 text-white p-2.5 rounded-xl shadow-sm shadow-emerald-500/20">
@@ -283,49 +285,52 @@ export default function CenterStageView({
                         <Power size={18} />
                     </button>
                 </div>
-            </div>
+                </div>
+                
+                {/* Horizontal Tabs */}
+                <div className="flex items-center gap-3 overflow-x-auto px-8 py-4 bg-white/40 dark:bg-black/40 backdrop-blur-md border-b border-gray-200/20 dark:border-gray-800/20 hide-scrollbar pt-2">
+                    {timers.map((t, idx) => {
+                        const isSelected = idx === safeActiveIndex;
+                        const isTabEnded = t.status === 'Ended';
+                        const isTabWarning = t.status === 'Running' && t.remainingSeconds <= settings.warningThresholdSeconds;
+                        const isTabCritical = t.status === 'Running' && t.remainingSeconds <= settings.criticalThresholdSeconds;
 
-            {/* Horizontal Tabs */}
-            <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-4 hide-scrollbar pt-2 pl-2">
-                {timers.map((t, idx) => {
-                    const isSelected = idx === safeActiveIndex;
-                    const isTabEnded = t.status === 'Ended';
-                    const isTabWarning = t.status === 'Running' && t.remainingSeconds <= settings.warningThresholdSeconds;
-                    const isTabCritical = t.status === 'Running' && t.remainingSeconds <= settings.criticalThresholdSeconds;
+                        let barColor = 'border-blue-500';
+                        let dotColor = 'bg-blue-500';
+                        if (isTabEnded || isTabCritical) { barColor = 'border-red-500'; dotColor = 'bg-red-500'; }
+                        else if (isTabWarning) { barColor = 'border-amber-500'; dotColor = 'bg-amber-500'; }
+                        else if (t.status === 'Paused') { barColor = 'border-gray-400'; dotColor = 'bg-gray-400'; }
 
-                    let barColor = 'border-blue-500';
-                    let dotColor = 'bg-blue-500';
-                    if (isTabEnded || isTabCritical) { barColor = 'border-red-500'; dotColor = 'bg-red-500'; }
-                    else if (isTabWarning) { barColor = 'border-amber-500'; dotColor = 'bg-amber-500'; }
-                    else if (t.status === 'Paused') { barColor = 'border-gray-400'; dotColor = 'bg-gray-400'; }
-
-                    return (
-                        <button
-                            key={t.id}
-                            onClick={() => handleSelect(idx)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 transition-all shrink-0 shadow-sm
-                                ${barColor} 
-                                ${isSelected
-                                    ? 'bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-y-gray-700 dark:border-r-gray-700 shadow-md ring-1 ring-blue-500/20'
-                                    : 'bg-transparent border-y border-r border-transparent hover:bg-white/50 dark:hover:bg-gray-800/50'
-                                }`}
-                        >
-                            <div className="flex flex-col items-start font-medium text-left">
-                                <span className={`flex items-center gap-2 text-sm truncate max-w-[140px] ${isSelected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
-                                    {t.courseCode || 'Untitled'}
-                                    <div className={`w-1.5 h-1.5 rounded-full ${dotColor} ${isTabCritical && t.status === 'Running' ? 'animate-pulse' : ''}`} />
-                                </span>
-                                <span className={`text-xs font-mono tracking-tight ${isSelected ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
-                                    {formatTime(t.remainingSeconds, true)}
-                                </span>
-                            </div>
-                        </button>
-                    );
-                })}
+                        return (
+                            <button
+                                key={t.id}
+                                onClick={() => handleSelect(idx)}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 transition-all shrink-0 shadow-sm
+                                    ${barColor} 
+                                    ${isSelected
+                                        ? 'bg-white dark:bg-gray-900 border-y border-r border-gray-200 dark:border-y-gray-700 dark:border-r-gray-700 shadow-md ring-1 ring-blue-500/20'
+                                        : 'bg-white/40 dark:bg-gray-800/40 border-y border-r border-transparent hover:bg-white dark:hover:bg-gray-800'
+                                    }`}
+                            >
+                                <div className="flex flex-col items-start font-medium text-left">
+                                    <span className={`flex items-center gap-2 text-sm truncate max-w-[140px] ${isSelected ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        {t.courseCode || 'Untitled'}
+                                        <div className={`w-1.5 h-1.5 rounded-full ${dotColor} ${isTabCritical && t.status === 'Running' ? 'animate-pulse' : ''}`} />
+                                    </span>
+                                    <span className={`text-xs font-mono tracking-tight ${isSelected ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-500'}`}>
+                                        {formatTime(t.remainingSeconds, true)}
+                                    </span>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* Central Bespoke Display */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800/60 rounded-3xl p-8 relative overflow-hidden shadow-2xl dark:shadow-none transition-colors">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-12 bg-white dark:bg-[#0a0a0a] transition-colors">
+                {/* Background Ambient glow effect */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 dark:bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
                 {/* Active Timer Info */}
                 <div className="flex flex-col items-center mb-10 text-center relative z-10 w-full">
@@ -393,11 +398,11 @@ export default function CenterStageView({
                 </p>
 
                 {/* Action Buttons */}
-                <div className={`absolute bottom-8 right-8 flex items-center gap-3 z-20 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className={`absolute bottom-10 right-10 flex items-center gap-3 z-30 transition-all duration-500 ease-in-out ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
                     <button
                         onClick={() => onAddExtraTime(activeTimer.id)}
                         disabled={activeTimer.status === 'Ended' && activeTimer.isDismissed}
-                        className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold transition-colors disabled:opacity-40"
+                        className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-md text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-xl hover:bg-white dark:hover:bg-gray-700 font-bold transition-all active:scale-[0.98] disabled:opacity-40"
                     >
                         <Clock size={18} />
                         + Time
@@ -406,7 +411,7 @@ export default function CenterStageView({
                     {(activeTimer.status === 'Idle' || activeTimer.status === 'Paused') && (
                         <button
                             onClick={() => onStart(activeTimer.id)}
-                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/20 transition-colors"
+                            className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-xl shadow-emerald-600/20 transition-all active:scale-[0.98]"
                         >
                             <Play size={18} fill="currentColor" />
                             {activeTimer.status === 'Idle' ? 'Start' : 'Resume'}
@@ -416,7 +421,7 @@ export default function CenterStageView({
                     {activeTimer.status === 'Running' && (
                         <button
                             onClick={() => onPause(activeTimer.id)}
-                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-bold shadow-lg shadow-amber-500/20 transition-colors"
+                            className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white font-bold shadow-xl shadow-amber-500/20 transition-all active:scale-[0.98]"
                         >
                             <Pause size={18} fill="currentColor" />
                             Pause
@@ -426,7 +431,7 @@ export default function CenterStageView({
                     <button
                         onClick={() => onReset(activeTimer.id)}
                         disabled={activeTimer.status === 'Idle'}
-                        className="p-3 rounded-2xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                        className="p-3.5 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-md text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 shadow-xl hover:text-red-600 dark:hover:text-red-400 font-medium transition-all active:scale-[0.98] disabled:opacity-40"
                         title="Reset"
                     >
                         <RotateCcw size={18} />
@@ -434,19 +439,18 @@ export default function CenterStageView({
                 </div>
 
                 {/* Font Size Control + Fit Button - Bottom Left */}
-                <div className={`absolute bottom-8 left-8 z-20 transition-opacity duration-300 flex items-center gap-1 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                    <FontSizeControl
-                        scale={effectiveScale}
-                        isOverride={activeTimer.fontSizeOverride !== null}
-                        onChange={(s) => onFontSizeChange(activeTimer.id, s)}
-                        onReset={() => onFontSizeReset(activeTimer.id)}
-                        onFit={handleFit}
-                        compact
-                    />
+                <div className={`absolute bottom-10 left-10 z-30 transition-all duration-500 ease-in-out flex items-center gap-1 ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+                    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-1 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl">
+                        <FontSizeControl
+                            scale={effectiveScale}
+                            isOverride={activeTimer.fontSizeOverride !== null}
+                            onChange={(s) => onFontSizeChange(activeTimer.id, s)}
+                            onReset={() => onFontSizeReset(activeTimer.id)}
+                            onFit={handleFit}
+                            compact
+                        />
+                    </div>
                 </div>
-
-                {/* Ambient glow effect behind timer (Optional, for aesthetics) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 dark:bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
             </div>
 
             <style dangerouslySetInnerHTML={{

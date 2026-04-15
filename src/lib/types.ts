@@ -117,6 +117,7 @@ export interface AppSettings {
     /** Automatically dismiss ended timers after N seconds. null = disabled. */
     autoDismissAfterSeconds: number | null;
     ignoreCompletedInCenterStage: boolean;
+    showStatusLegend: boolean;
 
     // ─── Announcements ───────────────────────────────────────────────
     announcementsEnabled: boolean;
@@ -150,12 +151,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     soundEnabled: true,
     alarmVolume: 0.85,
     customAlarmPath: null,
-    endMessage: "Time's Up — Pens Down",
+    endMessage: "Time's Up — Pens & Pencils Down",
     showProgressBar: true,
     progressBarHeight: 20, // Default 20px
     theme: 'system',
     autoDismissAfterSeconds: null,
     ignoreCompletedInCenterStage: true,
+    showStatusLegend: false,
 
     announcementsEnabled: true,
     ttsProvider: 'web-speech',

@@ -103,7 +103,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
 
     // Grid container class + style — custom handling for 2-timer layouts
     const gridConfig = (() => {
-        const base = 'grid h-screen w-screen gap-4 p-4 pt-24 pb-20';
+        const base = 'absolute inset-0 grid gap-6 p-6 transition-all duration-500';
         if (examTimers.length === 2) {
             switch (twoTimerMode) {
                 case 'side-by-side':
@@ -115,7 +115,7 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
             }
         }
         return {
-            className: getGridClass(examTimers.length) + ' gap-4 p-4 pt-24 pb-20',
+            className: getGridClass(examTimers.length) + ' ' + base,
             style: {} as React.CSSProperties,
         };
     })();
@@ -358,8 +358,8 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                 <div
                     data-tauri-drag-region
                     className={`absolute top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between
-                        bg-white/90 dark:bg-black/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 transition-all duration-300
-                        ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
+                        bg-white/80 dark:bg-black/70 backdrop-blur-xl border-b border-gray-200/30 dark:border-gray-800/30 transition-all duration-500 ease-in-out
+                        ${controlsVisible ? 'opacity-100 translate-y-0 shadow-lg' : 'opacity-0 -translate-y-full pointer-events-none'}`}
                 >
                     {/* Left Side: Title & Subtitle */}
                     <div className="flex items-center gap-4">
@@ -454,11 +454,10 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
                                             key={mode}
                                             onClick={() => setTwoTimerMode(mode)}
                                             title={label}
-                                            className={`p-2 rounded-lg transition-colors ${
-                                                twoTimerMode === mode
-                                                    ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm'
-                                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                                            }`}
+                                            className={`p-2 rounded-lg transition-colors ${twoTimerMode === mode
+                                                ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                                }`}
                                         >
                                             <Icon />
                                         </button>
@@ -603,9 +602,9 @@ export default function ExamScreen({ settings, onUpdateSettings, onExit, onSetti
             )}
 
             {/* Status Legend */}
-            {viewMode === 'grid' && (
-                <div className={`absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0'}`}>
-                    <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-800 px-6 py-2.5 rounded-full shadow-xl flex items-center gap-8">
+            {viewMode === 'grid' && settings.showStatusLegend && (
+                <div className={`absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none transition-all duration-500 ease-in-out ${controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/30 dark:border-gray-800/30 px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-8 pointer-events-auto">
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
                             <span className="text-[11px] font-bold tracking-wider text-gray-600 dark:text-gray-300">NORMAL</span>

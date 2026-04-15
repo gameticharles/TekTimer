@@ -260,6 +260,21 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                 />
                             </button>
                         </div>
+
+                        {/* Show Status Legend */}
+                        <div className="flex items-center justify-between mt-4">
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Show Status Legend in Grid View</span>
+                            <button
+                                onClick={() => onUpdate({ showStatusLegend: !settings.showStatusLegend })}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${settings.showStatusLegend ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'
+                                    }`}
+                            >
+                                <div
+                                    className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${settings.showStatusLegend ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                />
+                            </button>
+                        </div>
                     </section>
 
                     {/* ─── WARNINGS ───────────────────────────────────── */}
