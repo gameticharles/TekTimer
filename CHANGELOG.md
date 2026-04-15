@@ -1,3 +1,7 @@
+## [0.5.7] - 2026-04-15
+
+- implemeted slide show notice (cdede26)
+- edited default scheduled time (06680be)
 ## [0.5.6] - 2026-04-15
 
 - improved usuability (c823bd1)
@@ -72,6 +76,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
