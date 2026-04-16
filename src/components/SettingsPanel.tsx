@@ -644,7 +644,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                         )}
                     </section>
 
-                    {/* ─── SLIDESHOW ──────────────────────────────────── */}
+                    {/* ─── SLIDESHOW ────────────────────────────────── */}
                     <section>
                         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Exam Notices Slideshow</h3>
 
@@ -659,7 +659,8 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                         </div>
 
                         {settings.slideshowEnabled && (
-                            <div className="space-y-4 pl-2 border-l-2 border-violet-200 dark:border-violet-800">
+                            <div className="space-y-5 pl-2 border-l-2 border-violet-200 dark:border-violet-800">
+
                                 {/* Backdrop Opacity */}
                                 <div>
                                     <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
@@ -671,29 +672,71 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                         onChange={(e) => onUpdate({ slideshowOpacity: Number(e.target.value) })}
                                         className="w-full accent-violet-500"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Lower = more transparent markers &bull; 100% = fully opaque background.</p>
+                                    <p className="text-xs text-gray-500 mt-1">Lower = more transparent &bull; 100% = fully opaque background.</p>
                                 </div>
 
-                                {/* Slide duration */}
+                                {/* Image display time */}
                                 <div>
-                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Seconds per Slide</label>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Image Display Time (seconds)</label>
                                     <div className="flex gap-2 flex-wrap">
-                                        {[5, 10, 20, 30, 60].map(s => (
+                                        {[3, 5, 10, 20, 30].map(s => (
                                             <button
                                                 key={s}
                                                 onClick={() => onUpdate({ slideshowSlideDuration: s })}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${settings.slideshowSlideDuration === s
-                                                    ? 'bg-violet-600 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                                    }`}
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                                    settings.slideshowSlideDuration === s
+                                                        ? 'bg-violet-600 text-white'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                }`}
                                             >{s}s</button>
                                         ))}
                                     </div>
+                                    <p className="text-xs text-gray-500 mt-1">How long each image stays on screen per visit.</p>
+                                </div>
+
+                                {/* Pause between slides */}
+                                <div>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Pause Between Slides (seconds)</label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {[3, 5, 10, 15, 20].map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => onUpdate({ slideshowPauseDuration: s })}
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                                    (settings.slideshowPauseDuration ?? 5) === s
+                                                        ? 'bg-violet-600 text-white'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                            >{s}s</button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Grid is visible during this gap between each image.</p>
+                                </div>
+
+                                {/* Cycles per phase */}
+                                <div>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Cycles per Phase</label>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => onUpdate({ slideshowCycles: Math.max(1, (settings.slideshowCycles ?? 3) - 1) })}
+                                            disabled={(settings.slideshowCycles ?? 3) <= 1}
+                                            className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold text-lg flex items-center justify-center"
+                                        >−</button>
+                                        <span className="text-gray-900 dark:text-white font-mono text-sm min-w-[2rem] text-center">
+                                            {settings.slideshowCycles ?? 3}
+                                        </span>
+                                        <button
+                                            onClick={() => onUpdate({ slideshowCycles: Math.min(10, (settings.slideshowCycles ?? 3) + 1) })}
+                                            disabled={(settings.slideshowCycles ?? 3) >= 10}
+                                            className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold text-lg flex items-center justify-center"
+                                        >+</button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">How many times the full image sequence repeats per phase window.</p>
                                 </div>
 
                                 {/* Phase timing */}
                                 <div className="space-y-2">
-                                    <label className="block text-sm text-gray-700 dark:text-gray-300">Auto-show phases</label>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300">Phase Window Durations</label>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-500">Start phase (first N min)</span>
                                         <input
@@ -712,6 +755,36 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                     </div>
                                 </div>
 
+                                {/* Phase enable checkboxes */}
+                                <div>
+                                    <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Auto-show in phases</label>
+                                    <div className="space-y-2 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800">
+                                        {([
+                                            { key: 'slideshowPhaseStart' as const, label: 'Start phase', color: 'bg-blue-500' },
+                                            { key: 'slideshowPhaseMiddle' as const, label: 'Middle phase', color: 'bg-gray-500' },
+                                            { key: 'slideshowPhaseEnd' as const, label: 'End phase', color: 'bg-amber-500' },
+                                        ]).map(({ key, label, color }) => {
+                                            const val = (settings[key] as boolean) ?? true;
+                                            return (
+                                                <div key={key} className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${color}`} />
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => onUpdate({ [key]: !val })}
+                                                        className={`relative w-11 h-6 rounded-full transition-colors ${val ? 'bg-violet-500 dark:bg-violet-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                                    >
+                                                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow ${val ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Slideshow auto-fires for the configured number of cycles when the selected phase window begins.</p>
+                                </div>
+
+                                {/* Media files */}
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block text-sm text-gray-700 dark:text-gray-300">
                                         Media Files ({settings.slideshowMedia.length})
@@ -749,7 +822,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                                                 className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase transition-colors ${slide.phases.includes(phase)
                                                                     ? phase === 'start' ? 'bg-blue-500 text-white' : phase === 'middle' ? 'bg-gray-500 text-white' : 'bg-amber-500 text-white'
                                                                     : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
-                                                                    }`}
+                                                                }`}
                                                             >{phase}</button>
                                                         ))}
                                                     </div>

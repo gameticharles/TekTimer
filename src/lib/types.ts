@@ -132,10 +132,15 @@ export interface AppSettings {
 
     // ─── Slideshow ───────────────────────────────────────────────────
     slideshowEnabled: boolean;
-    slideshowOpacity: number;          // 5–40, displayed as %
-    slideshowSlideDuration: number;    // seconds per slide
-    slideshowPhaseStartMinutes: number; // show during first N minutes
-    slideshowPhaseEndMinutes: number;   // show during last N minutes
+    slideshowOpacity: number;           // 5–100, displayed as %
+    slideshowSlideDuration: number;     // seconds each image is visible
+    slideshowPauseDuration: number;     // seconds of grid-gap between slides
+    slideshowCycles: number;            // how many full cycles per phase window
+    slideshowPhaseStartMinutes: number; // start-phase = first N minutes
+    slideshowPhaseEndMinutes: number;   // end-phase = last N minutes
+    slideshowPhaseStart: boolean;       // auto-show during start phase
+    slideshowPhaseMiddle: boolean;      // auto-show during middle phase
+    slideshowPhaseEnd: boolean;         // auto-show during end phase
     slideshowMedia: MediaSlide[];
 
     // ─── Announcements ───────────────────────────────────────────────
@@ -181,8 +186,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     slideshowEnabled: false,
     slideshowOpacity: 20,
     slideshowSlideDuration: 5,
+    slideshowPauseDuration: 5,
+    slideshowCycles: 3,
     slideshowPhaseStartMinutes: 5,
     slideshowPhaseEndMinutes: 10,
+    slideshowPhaseStart: true,
+    slideshowPhaseMiddle: true,
+    slideshowPhaseEnd: true,
     slideshowMedia: [],
 
     announcementsEnabled: true,

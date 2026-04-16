@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { X, ChevronLeft, ChevronRight, ImageOff, Pause, Play } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ImageOff, Play, Repeat } from 'lucide-react';
 import type { AppSettings, ExamTimer, MediaSlide, SlidePhase } from '../lib/types';
 
 interface ExamSlideshowProps {
@@ -9,6 +9,8 @@ interface ExamSlideshowProps {
     isManuallyShown: boolean;
     onManualDismiss: () => void;
 }
+
+// ── Phase helpers ──────────────────────────────────────────────────────────────
 
 function getExamPhase(timers: ExamTimer[], startMinutes: number, endMinutes: number): SlidePhase {
     const active = timers.filter(t => t.status === 'Running' || t.status === 'Paused' || t.status === 'Idle');
@@ -23,6 +25,14 @@ function getExamPhase(timers: ExamTimer[], startMinutes: number, endMinutes: num
 function getSlidesForPhase(media: MediaSlide[], phase: SlidePhase): MediaSlide[] {
     return media.filter(m => m.phases.includes(phase));
 }
+
+function isPhaseEnabled(phase: SlidePhase, settings: AppSettings): boolean {
+    if (phase === 'start') return settings.slideshowPhaseStart ?? true;
+    if (phase === 'middle') return settings.slideshowPhaseMiddle ?? true;
+    return settings.slideshowPhaseEnd ?? true;
+}
+
+// ── Image cache ────────────────────────────────────────────────────────────────
 
 /** Per-session image cache: path → base64 data URL */
 const srcCache = new Map<string, string>();
@@ -54,110 +64,219 @@ function useMediaSrc(slide: MediaSlide | null): string | null {
     return src;
 }
 
+// ── Play-mode type ─────────────────────────────────────────────────────────────
+
+type PlayMode = 'idle' | 'cycle' | 'infinite';
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function ExamSlideshow({ settings, timers, isManuallyShown, onManualDismiss }: ExamSlideshowProps) {
     const {
-        slideshowEnabled, slideshowOpacity, slideshowSlideDuration,
+        slideshowEnabled, slideshowOpacity,
+        slideshowSlideDuration, slideshowPauseDuration, slideshowCycles,
         slideshowPhaseStartMinutes, slideshowPhaseEndMinutes, slideshowMedia,
     } = settings;
 
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [visible, setVisible] = useState(false);
-    const [isDismissed, setIsDismissed] = useState(false);
-    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-    const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
+    // ── Derived slide set ──────────────────────────────────────────────────
     const phase = getExamPhase(timers, slideshowPhaseStartMinutes, slideshowPhaseEndMinutes);
     const phaseSlides = getSlidesForPhase(slideshowMedia, phase);
     const slides = isManuallyShown ? slideshowMedia : phaseSlides;
-    const shouldShow = (slideshowEnabled || isManuallyShown) && slides.length > 0 && !isDismissed;
 
-    const safeIndex = slides.length > 0 ? currentIndex % slides.length : 0;
+    // ── Core state ─────────────────────────────────────────────────────────
+    const [playMode, setPlayMode]       = useState<PlayMode>('idle');
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [cyclesLeft, setCyclesLeft]   = useState(0);
+    /** true = showing the black overlay; false = showing the grid gap (pause) */
+    const [overlayVisible, setOverlayVisible] = useState(false);
+    /** true = in the inter-slide pause gap */
+    const [isPausing, setIsPausing]     = useState(false);
+    /** Whether the image has faded in */
+    const [imgVisible, setImgVisible]   = useState(false);
+
+    // ── Refs ───────────────────────────────────────────────────────────────
+    const seqTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const prevPhaseRef  = useRef<SlidePhase | null>(null);
+    const playModeRef   = useRef<PlayMode>('idle');
+
+    // Keep ref in sync so callbacks don't get stale
+    playModeRef.current = playMode;
+
+    // ── Prefetch ───────────────────────────────────────────────────────────
+    const safeIndex  = slides.length > 0 ? currentIndex % slides.length : 0;
     const currentSlide = slides[safeIndex] ?? null;
+    const nextSlide  = slides.length > 1 ? slides[(safeIndex + 1) % slides.length] : null;
 
-    // Load current + prefetch next
-    const mediaSrc = useMediaSrc(shouldShow ? currentSlide : null);
-    const nextSlide = slides.length > 1 ? slides[(safeIndex + 1) % slides.length] : null;
+    const mediaSrc = useMediaSrc(playMode !== 'idle' && !isPausing ? currentSlide : null);
     useMediaSrc(nextSlide); // background prefetch
 
-    // Fade in once src is ready
-    useEffect(() => {
-        if (mediaSrc && shouldShow) {
-            const t = setTimeout(() => setVisible(true), 50);
-            return () => clearTimeout(t);
-        } else {
-            setVisible(false);
-        }
-    }, [mediaSrc, shouldShow]);
+    // ── Sequence engine ────────────────────────────────────────────────────
 
-    // Fade out on slide change, then advance
-    const advanceTo = useCallback((fn: (prev: number) => number) => {
-        setVisible(false);
-        setTimeout(() => {
-            setCurrentIndex(fn);
-        }, 400);
+    const clearSeqTimer = useCallback(() => {
+        if (seqTimerRef.current) { clearTimeout(seqTimerRef.current); seqTimerRef.current = null; }
     }, []);
 
-    // Helper: start (or restart) the auto-advance interval from scratch
-    const startInterval = useCallback(() => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        if (slides.length <= 1) return;
-        intervalRef.current = setInterval(() => {
-            advanceTo(prev => (prev + 1) % slides.length);
-        }, slideshowSlideDuration * 1000);
-    }, [slides.length, slideshowSlideDuration, advanceTo]);
+    /**
+     * Advance to the next slide.
+     * idx      = current index
+     * cLeft    = cycles remaining AFTER the current one (pre-decremented for wrap)
+     * mode     = play mode to use for continuation
+     */
+    const scheduleNext = useCallback((idx: number, cLeft: number, mode: PlayMode) => {
+        clearSeqTimer();
+        if (slides.length === 0 || mode === 'idle') return;
 
-    // Auto-advance effect — only runs when isAutoPlaying is true
-    useEffect(() => {
-        if (!shouldShow || !isAutoPlaying) {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            return;
-        }
-        startInterval();
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-    }, [shouldShow, isAutoPlaying, startInterval]);
+        // Show image for slideDuration seconds
+        seqTimerRef.current = setTimeout(() => {
+            // Fade out image, begin pause gap
+            setImgVisible(false);
+            setIsPausing(true);
 
-    // Reset dismiss & resume auto-play when manually triggered
+            seqTimerRef.current = setTimeout(() => {
+                // End pause gap
+                setIsPausing(false);
+
+                const nextIdx = (idx + 1) % slides.length;
+                const wrapped = nextIdx === 0; // completed a full cycle
+
+                let nextCycles = cLeft;
+                if (wrapped && mode === 'cycle') {
+                    nextCycles = cLeft - 1;
+                    if (nextCycles <= 0) {
+                        // All cycles done — stop
+                        setPlayMode('idle');
+                        setOverlayVisible(false);
+                        setCurrentIndex(0);
+                        return;
+                    }
+                }
+
+                setCyclesLeft(nextCycles);
+                setCurrentIndex(nextIdx);
+                // scheduleNext will be re-triggered by the useEffect that watches currentIndex / playMode
+            }, (slideshowPauseDuration ?? 5) * 1000);
+        }, (slideshowSlideDuration ?? 5) * 1000);
+    }, [slides.length, slideshowSlideDuration, slideshowPauseDuration, clearSeqTimer]);
+
+    // ── Start a fresh run ──────────────────────────────────────────────────
+
+    const startRun = useCallback((mode: PlayMode, cycles: number) => {
+        clearSeqTimer();
+        setCurrentIndex(0);
+        setCyclesLeft(cycles);
+        setIsPausing(false);
+        setImgVisible(false);
+        setOverlayVisible(true);
+        setPlayMode(mode);
+    }, [clearSeqTimer]);
+
+    const stopRun = useCallback(() => {
+        clearSeqTimer();
+        setImgVisible(false);
+        // Brief delay so image fades out before overlay disappears
+        setTimeout(() => {
+            setOverlayVisible(false);
+            setPlayMode('idle');
+            setIsPausing(false);
+            setCurrentIndex(0);
+        }, 400);
+    }, [clearSeqTimer]);
+
+    // ── Drive sequence whenever index / playMode changes ───────────────────
+
     useEffect(() => {
-        if (isManuallyShown) {
-            setIsDismissed(false);
-            setIsAutoPlaying(true);
+        if (playMode === 'idle' || isPausing) return;
+        if (slides.length === 0) return;
+        scheduleNext(safeIndex, cyclesLeft, playMode);
+        return clearSeqTimer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentIndex, playMode]);
+
+    // ── Fade image in once src is ready ───────────────────────────────────
+
+    useEffect(() => {
+        if (mediaSrc && playMode !== 'idle' && !isPausing) {
+            const t = setTimeout(() => setImgVisible(true), 50);
+            return () => clearTimeout(t);
+        } else {
+            setImgVisible(false);
         }
+    }, [mediaSrc, playMode, isPausing]);
+
+    // ── Phase-transition auto-start ────────────────────────────────────────
+
+    useEffect(() => {
+        if (!slideshowEnabled || slides.length === 0) return;
+        if (isManuallyShown) return; // manual takes priority
+
+        const prevPhase = prevPhaseRef.current;
+        prevPhaseRef.current = phase;
+
+        if (phase === prevPhase) return; // no transition yet
+
+        if (isPhaseEnabled(phase, settings) && playModeRef.current === 'idle') {
+            // New phase window opened and this phase is enabled → fire
+            startRun('cycle', slideshowCycles ?? 3);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [phase]);
+
+    // ── Manual trigger ─────────────────────────────────────────────────────
+
+    useEffect(() => {
+        if (!isManuallyShown) return;
+
+        const anyRunning = timers.some(t => t.status === 'Running' || t.status === 'Paused');
+        if (anyRunning) {
+            // Timers are active → finite cycle run
+            startRun('cycle', slideshowCycles ?? 3);
+        } else {
+            // No timers started → infinite mode
+            startRun('infinite', 0);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isManuallyShown]);
 
-    const handleDismiss = useCallback(() => {
-        setVisible(false);
-        setTimeout(() => setIsDismissed(true), 400);
-        if (isManuallyShown) onManualDismiss();
-        if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-        dismissTimerRef.current = setTimeout(() => setIsDismissed(false), 2 * 60 * 1000);
-    }, [isManuallyShown, onManualDismiss]);
+    // ── Dismiss ────────────────────────────────────────────────────────────
 
-    // Manual nav resets the interval so it doesn't fire immediately after a click
+    const handleDismiss = useCallback(() => {
+        stopRun();
+        if (isManuallyShown) onManualDismiss();
+    }, [stopRun, isManuallyShown, onManualDismiss]);
+
+    // ── Manual navigation ──────────────────────────────────────────────────
+
     const goNext = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        advanceTo(prev => (prev + 1) % slides.length);
-        if (isAutoPlaying) startInterval();
-    }, [slides.length, advanceTo, isAutoPlaying, startInterval]);
+        clearSeqTimer();
+        setImgVisible(false);
+        setIsPausing(false);
+        setCurrentIndex(prev => (prev + 1) % slides.length);
+    }, [slides.length, clearSeqTimer]);
 
     const goPrev = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        advanceTo(prev => (prev - 1 + slides.length) % slides.length);
-        if (isAutoPlaying) startInterval();
-    }, [slides.length, advanceTo, isAutoPlaying, startInterval]);
+        clearSeqTimer();
+        setImgVisible(false);
+        setIsPausing(false);
+        setCurrentIndex(prev => (prev - 1 + slides.length) % slides.length);
+    }, [slides.length, clearSeqTimer]);
 
-    const toggleAutoPlay = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setIsAutoPlaying(prev => !prev);
-    }, []);
+    // ── Render guard ───────────────────────────────────────────────────────
+    // During isPausing: return null so the overlay fully unmounts and the
+    // timer grid shows through completely (no blur, no dimming).
 
-    if (!shouldShow || !currentSlide) return null;
+    if (!overlayVisible || !currentSlide || isPausing) return null;
 
     const backdropAlpha = slideshowOpacity / 100;
+    const cycleLabel    = playMode === 'infinite'
+        ? '∞'
+        : playMode === 'cycle'
+            ? `${cyclesLeft} cycle${cyclesLeft !== 1 ? 's' : ''} left`
+            : '';
 
     return (
         <div
-            className={`absolute inset-0 z-40 transition-opacity duration-500 ease-in-out ${visible ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 z-40 transition-opacity duration-500 ease-in-out ${overlayVisible ? 'opacity-100' : 'opacity-0'}`}
             onClick={handleDismiss}
         >
             {/* ── Blurred backdrop ── */}
@@ -166,8 +285,8 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
                 style={{ backgroundColor: `rgba(0, 0, 0, ${backdropAlpha})` }}
             />
 
-            {/* ── Centred image / video ── */}
-            <div className="absolute inset-0 flex items-center justify-center p-10 pointer-events-none">
+            {/* ── Image ── */}
+            <div className={`absolute inset-0 flex items-center justify-center p-10 pointer-events-none transition-opacity duration-400 ${imgVisible ? 'opacity-100' : 'opacity-0'}`}>
                 {mediaSrc && (
                     currentSlide.type === 'image' ? (
                         <img
@@ -190,24 +309,22 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
                 )}
             </div>
 
+
             {/* ── Controls ── */}
             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                {/* Top bar: auto-play toggle + dismiss */}
+                {/* Top bar */}
                 <div className="flex justify-between items-center p-4 pointer-events-auto">
-                    {/* Auto-play toggle */}
-                    <button
-                        onClick={toggleAutoPlay}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm transition-all border shadow-lg ${isAutoPlaying
-                            ? 'bg-white/25 hover:bg-white/35 text-white border-white/30'
-                            : 'bg-black/40 hover:bg-black/50 text-white/70 border-white/15'
-                            }`}
-                        title={isAutoPlaying ? 'Pause auto-advance' : 'Resume auto-advance'}
+                    {/* Mode / cycles badge */}
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm border shadow-lg
+                        ${playMode === 'infinite'
+                            ? 'bg-white/25 text-white border-white/30'
+                            : 'bg-black/40 text-white/80 border-white/15'}`}
                     >
-                        {isAutoPlaying
-                            ? <><Pause size={12} className="shrink-0" /> Auto</>
-                            : <><Play size={12} className="shrink-0" /> Paused</>
+                        {playMode === 'infinite'
+                            ? <><Play size={12} className="shrink-0" /> Infinite</>
+                            : <><Repeat size={12} className="shrink-0" /> {cycleLabel}</>
                         }
-                    </button>
+                    </div>
 
                     {/* Dismiss */}
                     <button
@@ -219,7 +336,7 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
                     </button>
                 </div>
 
-                {/* Navigation: dots + prev/next arrows */}
+                {/* Navigation: dots + arrows */}
                 {slides.length > 1 && (
                     <div className="flex items-center justify-center gap-3 pb-2 pointer-events-auto">
                         <button
@@ -235,8 +352,10 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
                                     key={i}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        advanceTo(() => i);
-                                        if (isAutoPlaying) startInterval();
+                                        clearSeqTimer();
+                                        setImgVisible(false);
+                                        setIsPausing(false);
+                                        setCurrentIndex(i);
                                     }}
                                     className={`rounded-full transition-all ${i === safeIndex
                                         ? 'w-5 h-2.5 bg-white shadow-sm'
@@ -259,7 +378,6 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
             {/* Phase / slide counter */}
             <div className="absolute bottom-4 right-4 text-[10px] font-bold tracking-widest text-white/50 uppercase pointer-events-none flex items-center gap-1">
                 {isManuallyShown ? 'Manual' : phase} · {safeIndex + 1}/{slides.length}
-                {!isAutoPlaying && <span className="ml-1 text-amber-400/60">· Paused</span>}
             </div>
         </div>
     );
