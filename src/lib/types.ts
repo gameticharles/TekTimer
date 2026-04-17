@@ -112,7 +112,7 @@ export interface MediaSlide {
 }
 
 // ─── Settings ────────────────────────────────────────────────────
-export type TTSProviderType = 'web-speech' | 'custom-api';
+export type TTSProviderType = 'web-speech' | 'custom-api' | 'kokoro';
 
 export interface AppSettings {
     globalFontScale: number;
@@ -145,6 +145,7 @@ export interface AppSettings {
 
     // ─── Announcements ───────────────────────────────────────────────
     announcementsEnabled: boolean;
+    announcementRepeatCount: number;    // 1–5 — how many times each phrase is spoken
     ttsProvider: TTSProviderType;
     ttsVoiceId: string | null;
     ttsRate: number;
@@ -152,6 +153,9 @@ export interface AppSettings {
 
     customTTSUrl: string;
     customTTSVoice: string | null;
+
+    kokoroVoiceId: string;             // kokoro-js voice id, e.g. 'af_bella'
+    kokoroPreWarmLeadSeconds: number;  // how many seconds before trigger to pre-generate audio
 
     llmEnabled: boolean;
     llmProvider: 'ollama' | null;
@@ -196,6 +200,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     slideshowMedia: [],
 
     announcementsEnabled: true,
+    announcementRepeatCount: 1,
     ttsProvider: 'web-speech',
     ttsVoiceId: null,
     ttsRate: 0.9,
@@ -203,6 +208,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
     customTTSUrl: 'http://localhost:8000/generate',
     customTTSVoice: 'Jasper',
+
+    kokoroVoiceId: 'af_bella',
+    kokoroPreWarmLeadSeconds: 20,
 
     llmEnabled: false,
     llmProvider: null,

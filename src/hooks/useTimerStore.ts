@@ -114,6 +114,17 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                         }
                     }
 
+                    // Pre-warm Kokoro for the end message N seconds before timer reaches zero
+                    if (settings.announcementsEnabled &&
+                        settings.ttsProvider === 'kokoro' &&
+                        payload.status === 'Running') {
+                        const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 20;
+                        if (payload.remaining_seconds <= PRE_WARM_LEAD &&
+                            payload.remaining_seconds > PRE_WARM_LEAD - 1) {
+                            announcementQueue.preWarm(resolveTemplate(settings.endMessage, updated));
+                        }
+                    }
+
                     if (settings.announcementsEnabled && justEnded) {
                         const resolvedText = resolveTemplate(settings.endMessage, updated);
                         (async () => {
@@ -133,6 +144,16 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                             if (!entry.enabled || entry.hasBeenSpoken) return entry;
 
                             const WINDOW_SECONDS = 3;
+                            const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 20;
+
+                            // Pre-warm Kokoro N seconds before the announcement fires
+                            if (settings.ttsProvider === 'kokoro' &&
+                                updated.remainingSeconds <= entry.triggerAtSeconds + PRE_WARM_LEAD + WINDOW_SECONDS &&
+                                updated.remainingSeconds > entry.triggerAtSeconds + PRE_WARM_LEAD - 1) {
+                                const preWarmText = resolveTemplate(entry.message, updated);
+                                announcementQueue.preWarm(preWarmText);
+                            }
+
                             if (updated.remainingSeconds <= entry.triggerAtSeconds &&
                                 updated.remainingSeconds >= entry.triggerAtSeconds - WINDOW_SECONDS) {
 

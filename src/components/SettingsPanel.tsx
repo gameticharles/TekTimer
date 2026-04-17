@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw, Trash2, Images
+    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw, Trash2, Images, Cpu
 } from 'lucide-react';
 import { getTTSProvider } from '../lib/tts/getTTSProvider';
 import type { AppSettings, MediaSlide } from '../lib/types';
@@ -13,6 +13,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { audioManager } from '../lib/audioManager';
 import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
 import type { ExamTimer } from '../lib/types';
+import { KOKORO_VOICES, KokoroTTSProvider } from '../lib/tts/KokoroTTSProvider';
 
 interface SettingsPanelProps {
     settings: AppSettings;
@@ -49,6 +50,160 @@ function WebSpeechVoiceSelector({ settings, onUpdate }: { settings: AppSettings,
     );
 }
 
+function KokoroVoiceSelector({ settings, onUpdate }: { settings: AppSettings, onUpdate: (p: Partial<AppSettings>) => void }) {
+    const [modelLoaded, setModelLoaded] = useState(KokoroTTSProvider.isLoaded);
+    const [warming, setWarming] = useState(false);
+
+    // Poll model status every second until loaded
+    useEffect(() => {
+        if (modelLoaded) return;
+        const id = setInterval(() => {
+            if (KokoroTTSProvider.isLoaded) {
+                setModelLoaded(true);
+                clearInterval(id);
+            }
+        }, 1000);
+        return () => clearInterval(id);
+    }, [modelLoaded]);
+
+    const handleWarmUp = () => {
+        setWarming(true);
+        KokoroTTSProvider.warmUp();
+        // Poll until loaded
+        const id = setInterval(() => {
+            if (KokoroTTSProvider.isLoaded) {
+                setModelLoaded(true);
+                setWarming(false);
+                clearInterval(id);
+            }
+        }, 500);
+    };
+
+    // Group voices by language
+    const usVoices  = KOKORO_VOICES.filter(v => v.lang === 'en-US');
+    const gbVoices  = KOKORO_VOICES.filter(v => v.lang === 'en-GB');
+
+    return (
+        <div className="space-y-3">
+            {/* Model status badge */}
+            <div className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold ${
+                modelLoaded
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+            }`}>
+                <div className="flex items-center gap-1.5">
+                    <Cpu size={13} />
+                    {modelLoaded ? 'Model loaded — ready' : 'Model not yet loaded (~86 MB, one-time download)'}
+                </div>
+                {!modelLoaded && (
+                    <button
+                        onClick={handleWarmUp}
+                        disabled={warming}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+                    >
+                        {warming ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
+                        {warming ? 'Loading…' : 'Load Now'}
+                    </button>
+                )}
+            </div>
+
+            {/* Voice picker */}
+            <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1.5">Voice</label>
+                <select
+                    value={settings.kokoroVoiceId || 'af_bella'}
+                    onChange={(e) => onUpdate({ kokoroVoiceId: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-transparent rounded-lg text-sm text-gray-900 dark:text-white focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-900 transition-colors"
+                >
+                    <optgroup label="American English">
+                        {usVoices.map(v => (
+                            <option key={v.id} value={v.id}>{v.label}</option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="British English">
+                        {gbVoices.map(v => (
+                            <option key={v.id} value={v.id}>{v.label}</option>
+                        ))}
+                    </optgroup>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Neural voice — sounds identical on every machine.</p>
+            </div>
+
+            {/* Pre-warm lead time */}
+            <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                    Pre-generate Audio Before Trigger
+                </label>
+                <div className="flex gap-1.5">
+                    {[5, 10, 20, 30, 45].map(s => (
+                        <button
+                            key={s}
+                            onClick={() => onUpdate({ kokoroPreWarmLeadSeconds: s })}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                                (settings.kokoroPreWarmLeadSeconds ?? 20) === s
+                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-500/50'
+                            }`}
+                        >
+                            {s}s
+                        </button>
+                    ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                    Starts generating audio {settings.kokoroPreWarmLeadSeconds ?? 20}s before the announcement fires so it plays instantly.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+
+
+function TestVoiceButton({ settings }: { settings: AppSettings }) {
+    const [testing, setTesting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleTest = async () => {
+        setError(null);
+        setTesting(true);
+        try {
+            const provider = getTTSProvider(settings);
+            // Kokoro uses kokoroVoiceId; Web Speech uses ttsVoiceId
+            const voiceId = settings.ttsProvider === 'kokoro'
+                ? settings.kokoroVoiceId
+                : (settings.ttsVoiceId || undefined);
+            await provider.speak('This is a test of your announcement system.', {
+                rate: settings.ttsRate,
+                volume: settings.ttsVolume,
+                voiceId,
+            });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setError(msg);
+            console.error('[TestVoice] Failed:', e);
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    return (
+        <div className="mt-2 space-y-1">
+            <button
+                onClick={handleTest}
+                disabled={testing}
+                className="w-full py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium hover:bg-emerald-600/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+                {testing
+                    ? <><Loader2 size={14} className="animate-spin" /> {settings.ttsProvider === 'kokoro' ? 'Generating…' : 'Speaking…'}</>
+                    : <>▶ Test Voice</>
+                }
+            </button>
+            {error && (
+                <p className="text-xs text-red-500 dark:text-red-400 px-1">{error}</p>
+            )}
+        </div>
+    );
+}
 
 export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: SettingsPanelProps) {
     const [testPlaying, setTestPlaying] = useState(false);
@@ -525,12 +680,16 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                         className="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-amber-500/50"
                                     >
                                         <option value="web-speech">System Voice (Built-in)</option>
+                                        <option value="kokoro">Kokoro AI Voice (Local — Recommended)</option>
                                         <option value="custom-api">Custom API (Local/KittenTTS)</option>
                                     </select>
                                 </div>
 
                                 {settings.ttsProvider === 'web-speech' && (
                                     <WebSpeechVoiceSelector settings={settings} onUpdate={onUpdate} />
+                                )}
+                                {settings.ttsProvider === 'kokoro' && (
+                                    <KokoroVoiceSelector settings={settings} onUpdate={onUpdate} />
                                 )}
                                 {settings.ttsProvider === 'custom-api' && (
                                     <>
@@ -558,6 +717,34 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                 )}
 
                                 <div className="space-y-3 pt-2">
+                                    {/* ── Repeat Count ── */}
+                                    <div>
+                                        <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                            Repeat Each Announcement
+                                        </label>
+                                        <div className="flex gap-1.5">
+                                            {[1, 2, 3, 4, 5].map(n => (
+                                                <button
+                                                    key={n}
+                                                    onClick={() => onUpdate({ announcementRepeatCount: n })}
+                                                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
+                                                        (settings.announcementRepeatCount ?? 1) === n
+                                                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                                                            : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-500/50'
+                                                    }`}
+                                                >
+                                                    {n}×
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {(settings.announcementRepeatCount ?? 1) === 1
+                                                ? 'Each announcement is read once.'
+                                                : `Each announcement is read ${settings.announcementRepeatCount} times with a 1.5s pause between repeats.`}
+                                        </p>
+                                    </div>
+
+                                    {/* ── Speech Rate & Volume ── */}
                                     <div className="flex items-center justify-between">
                                         <label className="text-sm text-gray-700 dark:text-gray-300">Speech Rate ({settings.ttsRate}x)</label>
                                         <input
@@ -578,19 +765,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => {
-                                        const provider = getTTSProvider(settings);
-                                        provider.speak("This is a test of your announcement system.", {
-                                            rate: settings.ttsRate,
-                                            volume: settings.ttsVolume,
-                                            voiceId: settings.ttsVoiceId || undefined
-                                        }).catch(e => console.error("Test voice failed", e));
-                                    }}
-                                    className="w-full py-2 mt-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium hover:bg-emerald-600/30 transition-colors"
-                                >
-                                    ▶ Test Voice
-                                </button>
+                                <TestVoiceButton settings={settings} />
                             </div>
                         )}
                     </section>

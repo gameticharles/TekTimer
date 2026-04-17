@@ -8,6 +8,7 @@ import AnnouncementToast from './components/AnnouncementToast';
 import { useSettings } from './hooks/useSettings';
 import { useTimerStore } from './hooks/useTimerStore';
 import { useProctorStore } from './hooks/useProctorStore';
+import { KokoroTTSProvider } from './lib/tts/KokoroTTSProvider';
 import type { AppMode } from './lib/types';
 
 export default function App() {
@@ -39,6 +40,15 @@ export default function App() {
     mediaQuery.addEventListener('change', applyTheme);
     return () => mediaQuery.removeEventListener('change', applyTheme);
   }, [settings?.theme, loaded]);
+
+  // Pre-warm the Kokoro model in the background so the first announcement
+  // has no cold-start delay. Fires only if Kokoro is the selected provider.
+  useEffect(() => {
+    if (!loaded) return;
+    if (settings.ttsProvider === 'kokoro' && !KokoroTTSProvider.isLoaded) {
+      KokoroTTSProvider.warmUp();
+    }
+  }, [loaded, settings.ttsProvider]);
 
   if (!loaded) {
     return (

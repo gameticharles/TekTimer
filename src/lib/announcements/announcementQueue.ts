@@ -1,6 +1,7 @@
 import { getTTSProvider } from '../tts/getTTSProvider';
 import { TTSProvider } from '../tts/types';
 import { WebSpeechTTSProvider } from '../tts/WebSpeechTTSProvider';
+import { KokoroTTSProvider } from '../tts/KokoroTTSProvider';
 import type { AppSettings } from '../types';
 
 interface QueuedAnnouncement {
@@ -8,6 +9,12 @@ interface QueuedAnnouncement {
     text: string;            // Resolved text (variables already substituted)
     priority: number;        // Lower = higher priority. 0 = manual, 1 = end-of-exam, 2 = milestone
 }
+
+/** Text-based dedup: prevents the same phrase from being spoken twice within
+ *  a short window. Solves the "multiple timers in a group all fire the same
+ *  announcement" problem — only the first one wins. */
+const _recentlySpoken = new Map<string, number>(); // text → epoch ms
+const TEXT_DEDUP_WINDOW_MS = 8_000; // 8 seconds
 
 class AnnouncementQueue {
     private queue: QueuedAnnouncement[] = [];
@@ -20,8 +27,15 @@ class AnnouncementQueue {
     }
 
     enqueue(announcement: QueuedAnnouncement): void {
-        // Deduplicate logic
+        // 1. ID-based dedup (same timer+entry already queued)
         if (this.queue.some(a => a.id === announcement.id)) return;
+
+        // 2. Text+time dedup (same phrase already spoken/queued recently)
+        //    Handles multiple timers in a group firing the identical text.
+        const now = Date.now();
+        const lastSpoken = _recentlySpoken.get(announcement.text);
+        if (lastSpoken && now - lastSpoken < TEXT_DEDUP_WINDOW_MS) return;
+        _recentlySpoken.set(announcement.text, now);
 
         // Insert sorted by priority (lower number = front of queue)
         const idx = this.queue.findIndex(a => a.priority > announcement.priority);
@@ -36,6 +50,19 @@ class AnnouncementQueue {
         }
     }
 
+    /**
+     * Pre-warm Kokoro by generating (but not playing) the audio for the next
+     * queued announcement. Call this ~10s before the trigger fires so generation
+     * latency is hidden.
+     */
+    preWarm(text: string): void {
+        if (!this.settings || this.settings.ttsProvider !== 'kokoro') return;
+        const provider = getTTSProvider(this.settings);
+        if (provider instanceof KokoroTTSProvider) {
+            provider.preGenerate(text);
+        }
+    }
+
     private async processNext(): Promise<void> {
         if (this.queue.length === 0 || !this.settings) {
             this.isSpeaking = false;
@@ -47,11 +74,19 @@ class AnnouncementQueue {
         const next = this.queue.shift()!;
         this.currentText = next.text;
 
+        const repeatCount = Math.max(1, this.settings.announcementRepeatCount ?? 1);
+
         try {
             const provider = getTTSProvider(this.settings);
-            await new Promise<void>((resolve) => {
-                speakAndAwaitEnd(provider, next.text, this.settings!, resolve);
-            });
+            for (let i = 0; i < repeatCount; i++) {
+                await new Promise<void>((resolve) => {
+                    speakAndAwaitEnd(provider, next.text, this.settings!, resolve);
+                });
+                // Brief pause between repetitions (not after the last one)
+                if (i < repeatCount - 1) {
+                    await sleep(1500);
+                }
+            }
         } catch (err) {
             console.error('Announcement failed:', err);
         }
@@ -98,6 +133,7 @@ async function speakAndAwaitEnd(
     onEnd: () => void
 ): Promise<void> {
     if (provider instanceof WebSpeechTTSProvider) {
+        // Web Speech API: drive directly so onend fires correctly
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = settings.ttsRate;
         utterance.volume = settings.ttsVolume;
@@ -109,17 +145,30 @@ async function speakAndAwaitEnd(
         utterance.onend = onEnd;
         utterance.onerror = onEnd;
         window.speechSynthesis.speak(utterance);
+    } else if (provider instanceof KokoroTTSProvider) {
+        // Kokoro: pass the correct voice ID and wait for onEnded callback
+        try {
+            await provider.speak(text, {
+                rate: settings.ttsRate,
+                volume: settings.ttsVolume,
+                voiceId: settings.kokoroVoiceId || undefined,
+                onEnded: onEnd,
+            });
+        } catch (e) {
+            console.error('Kokoro TTS error:', e);
+            onEnd();
+        }
     } else {
-        // Audio-based providers (OpenAI/ElevenLabs)
+        // Custom API / OpenAI / ElevenLabs
         try {
             await provider.speak(text, {
                 rate: settings.ttsRate,
                 volume: settings.ttsVolume,
                 voiceId: settings.ttsVoiceId || undefined,
-                onEnded: onEnd
+                onEnded: onEnd,
             });
         } catch (e) {
-            console.error("Audio provider error", e);
+            console.error('Audio provider error:', e);
             onEnd();
         }
     }
