@@ -208,6 +208,16 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
         if (!slideshowEnabled || slides.length === 0) return;
         if (isManuallyShown) return; // manual takes priority
 
+        // Only react to phase transitions once an exam is actually running.
+        // A freshly-created Idle timer has elapsed=0, which would falsely
+        // match the 'start' phase window and trigger a premature cycle run.
+        const examActive = timers.some(t => t.status === 'Running' || t.status === 'Paused');
+        if (!examActive) {
+            // Keep prevPhaseRef in sync so the first real start triggers correctly
+            prevPhaseRef.current = phase;
+            return;
+        }
+
         const prevPhase = prevPhaseRef.current;
         prevPhaseRef.current = phase;
 
@@ -218,20 +228,20 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
             startRun('cycle', slideshowCycles ?? 3);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [phase]);
+    }, [phase, timers]);
 
     // ── Manual trigger ─────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!isManuallyShown) return;
 
-        const anyRunning = timers.some(t => t.status === 'Running' || t.status === 'Paused');
-        if (anyRunning) {
-            // Timers are active → finite cycle run
-            startRun('cycle', slideshowCycles ?? 3);
-        } else {
-            // No timers started → infinite mode
+        // Infinite only when no timer has started yet (all still Idle).
+        // If any timer has been started (Running, Paused, or Ended) → finite cycles.
+        const allIdle = timers.every(t => t.status === 'Idle');
+        if (allIdle) {
             startRun('infinite', 0);
+        } else {
+            startRun('cycle', slideshowCycles ?? 3);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isManuallyShown]);
