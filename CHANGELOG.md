@@ -1,3 +1,6 @@
+## [0.5.9] - 2026-04-17
+
+- fixed slideshow (56f786f)
 ## [0.5.8] - 2026-04-16
 
 - Fixed the slideshow (1e31ad3)
@@ -79,6 +82,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
