@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Mic, RefreshCw, Send, Sparkles } from 'lucide-react';
 import type { AppSettings, AnyTimer } from '../lib/types';
 import { resolveTemplate, enhanceWithLLM, announcementQueue } from '../lib/announcements';
+import { KOKORO_VOICES } from '../lib/tts/KokoroTTSProvider';
 
 interface AnnouncementModalProps {
     settings: AppSettings;
@@ -14,6 +15,16 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
     const [customText, setCustomText] = useState('');
     const [llmIntent, setLlmIntent] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [voiceOverride, setVoiceOverride] = useState<string>('');
+    const [webVoices, setWebVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+    useEffect(() => {
+        if (settings.ttsProvider === 'web-speech') {
+            const updateVoices = () => setWebVoices(window.speechSynthesis.getVoices());
+            updateVoices();
+            window.speechSynthesis.onvoiceschanged = updateVoices;
+        }
+    }, [settings.ttsProvider]);
 
     const getPreviewText = (text: string) => {
         if (targetTimerId === 'all') return text;
@@ -28,6 +39,7 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
             id: `manual-quick-${Date.now()}`,
             text: getPreviewText(msg),
             priority: 0,
+            voiceIdOverride: voiceOverride || undefined
         });
         onClose();
     };
@@ -38,6 +50,7 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
             id: `manual-${Date.now()}`,
             text: getPreviewText(text),
             priority: 0,
+            voiceIdOverride: voiceOverride || undefined
         });
         onClose();
     };
@@ -48,6 +61,7 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
             id: `manual-queued-${Date.now()}`,
             text: getPreviewText(text),
             priority: 2,
+            voiceIdOverride: voiceOverride || undefined
         });
         onClose();
     };
@@ -80,21 +94,53 @@ export default function AnnouncementModal({ settings, timers, onClose }: Announc
                 </div>
 
                 <div className="p-6 space-y-6">
-                    {/* Target Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2 transition-colors">Target Audience</label>
-                        <select
-                            value={targetTimerId}
-                            onChange={(e) => setTargetTimerId(e.target.value)}
-                            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-                        >
-                            <option value="all">🌐 All Timers (No Prefix)</option>
-                            {timers.map(t => (
-                                <option key={t.id} value={t.id}>
-                                    🎯 {'courseCode' in t ? t.courseCode : t.label}
-                                </option>
-                            ))}
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Target Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2 transition-colors">Target Audience</label>
+                            <select
+                                value={targetTimerId}
+                                onChange={(e) => setTargetTimerId(e.target.value)}
+                                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                            >
+                                <option value="all">🌐 All Timers (No Prefix)</option>
+                                {timers.map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        🎯 {'courseCode' in t ? t.courseCode : t.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Voice Override */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2 transition-colors">Voice Override</label>
+                            <select
+                                value={voiceOverride}
+                                onChange={(e) => setVoiceOverride(e.target.value)}
+                                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                            >
+                                <option value="">Default Settings Voice</option>
+                                {settings.ttsProvider === 'kokoro' ? (
+                                    <>
+                                        <optgroup label="US English">
+                                            {KOKORO_VOICES.filter(v => v.lang === 'en-US').map(v => (
+                                                <option key={v.id} value={v.id}>{v.label}</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="UK English">
+                                            {KOKORO_VOICES.filter(v => v.lang === 'en-GB').map(v => (
+                                                <option key={v.id} value={v.id}>{v.label}</option>
+                                            ))}
+                                        </optgroup>
+                                    </>
+                                ) : (
+                                    webVoices.map(v => (
+                                        <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>
+                                    ))
+                                )}
+                            </select>
+                        </div>
                     </div>
 
                     {/* Quick Buttons */}

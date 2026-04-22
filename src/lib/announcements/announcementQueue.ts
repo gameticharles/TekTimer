@@ -8,6 +8,7 @@ interface QueuedAnnouncement {
     id: string;              // Announcement entry ID (for deduplication)
     text: string;            // Resolved text (variables already substituted)
     priority: number;        // Lower = higher priority. 0 = manual, 1 = end-of-exam, 2 = milestone
+    voiceIdOverride?: string; // Optional specific voice to use just for this announcement
 }
 
 /** Text-based dedup: prevents the same phrase from being spoken twice within
@@ -80,7 +81,7 @@ class AnnouncementQueue {
             const provider = getTTSProvider(this.settings);
             for (let i = 0; i < repeatCount; i++) {
                 await new Promise<void>((resolve) => {
-                    speakAndAwaitEnd(provider, next.text, this.settings!, resolve);
+                    speakAndAwaitEnd(provider, next.text, this.settings!, resolve, next.voiceIdOverride);
                 });
                 // Brief pause between repetitions (not after the last one)
                 if (i < repeatCount - 1) {
@@ -130,16 +131,19 @@ async function speakAndAwaitEnd(
     provider: TTSProvider,
     text: string,
     settings: AppSettings,
-    onEnd: () => void
+    onEnd: () => void,
+    voiceIdOverride?: string
 ): Promise<void> {
     if (provider instanceof WebSpeechTTSProvider) {
         // Web Speech API: drive directly so onend fires correctly
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = settings.ttsRate;
         utterance.volume = settings.ttsVolume;
-        if (settings.ttsVoiceId) {
+        
+        const effectiveVoiceId = voiceIdOverride || settings.ttsVoiceId;
+        if (effectiveVoiceId) {
             const voices = window.speechSynthesis.getVoices();
-            const match = voices.find(v => v.voiceURI === settings.ttsVoiceId);
+            const match = voices.find(v => v.voiceURI === effectiveVoiceId);
             if (match) utterance.voice = match;
         }
         utterance.onend = onEnd;
@@ -151,7 +155,7 @@ async function speakAndAwaitEnd(
             await provider.speak(text, {
                 rate: settings.ttsRate,
                 volume: settings.ttsVolume,
-                voiceId: settings.kokoroVoiceId || undefined,
+                voiceId: voiceIdOverride || settings.kokoroVoiceId || undefined,
                 onEnded: onEnd,
             });
         } catch (e) {
@@ -164,7 +168,7 @@ async function speakAndAwaitEnd(
             await provider.speak(text, {
                 rate: settings.ttsRate,
                 volume: settings.ttsVolume,
-                voiceId: settings.ttsVoiceId || undefined,
+                voiceId: voiceIdOverride || settings.ttsVoiceId || undefined,
                 onEnded: onEnd,
             });
         } catch (e) {
