@@ -32,17 +32,41 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
     const [searchQuery, setSearchQuery] = useState('');
     const [showPresetSelection, setShowPresetSelection] = useState(false);
     const [appVersion, setAppVersion] = useState<string>('');
-    const [updateStatus, setUpdateStatus] = useState<{ available: boolean, version?: string } | null>(null);
+    const [updateState, setUpdateState] = useState<{
+        available: boolean;
+        version?: string;
+        isDownloading?: boolean;
+        isReady?: boolean;
+        updateObj?: any;
+    } | null>(null);
+    const [showUpdateToast, setShowUpdateToast] = useState(false);
 
     useEffect(() => {
         getVersion().then(setAppVersion);
         check().then(update => {
-            if (update) setUpdateStatus({ available: true, version: update.version });
-            else setUpdateStatus({ available: false });
+            if (update) {
+                setUpdateState({ available: true, version: update.version, updateObj: update });
+                setShowUpdateToast(true);
+            } else {
+                setUpdateState({ available: false });
+            }
         }).catch(err => {
             console.error('Failed to check for updates on launch:', err);
         });
     }, []);
+
+    const handleInstallUpdate = async () => {
+        if (!updateState?.updateObj) return;
+        try {
+            setUpdateState(prev => prev ? { ...prev, isDownloading: true } : null);
+            await updateState.updateObj.downloadAndInstall();
+            setUpdateState(prev => prev ? { ...prev, isDownloading: false, isReady: true } : null);
+        } catch (error) {
+            console.error("Updater error:", error);
+            setUpdateState(prev => prev ? { ...prev, isDownloading: false } : null);
+            alert(`Failed to download update: ${String(error)}`);
+        }
+    };
 
     const handleExit = async () => {
         const confirmed = await ask("Are you sure you want to exit the application?", {
@@ -907,6 +931,63 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     </div>
                 )
             }
+
+            {/* Floating Update Toast */}
+            {showUpdateToast && updateState?.available && (
+                <div className="fixed bottom-16 right-6 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 max-w-sm w-full animate-fade-in-up">
+                    <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center shrink-0">
+                                <Upload size={16} className="text-blue-500" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white">Update v{updateState.version} Available</h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">A new version of TekTimer is ready.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowUpdateToast(false)}
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400 transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2">
+                        {updateState.isReady ? (
+                            <button
+                                onClick={() => getCurrentWindow().close()}
+                                className="flex-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors"
+                            >
+                                Restart Now
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleInstallUpdate}
+                                disabled={updateState.isDownloading}
+                                className="flex-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white disabled:bg-blue-500/50 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                            >
+                                {updateState.isDownloading ? (
+                                    <>
+                                        <RotateCcw size={12} className="animate-spin" /> Downloading...
+                                    </>
+                                ) : (
+                                    "Download & Install"
+                                )}
+                            </button>
+                        )}
+                        {!updateState.isDownloading && !updateState.isReady && (
+                            <button
+                                onClick={() => setShowUpdateToast(false)}
+                                className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs font-bold transition-colors"
+                            >
+                                Later
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Bottom Status Bar */}
             <div className="h-10 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1F2937] shrink-0 flex items-center justify-between px-6 text-[10px] font-bold text-gray-500 dark:text-gray-400 tracking-wide uppercase transition-colors">
                 <div className="flex items-center gap-6">
@@ -917,14 +998,26 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
                     <div className="flex items-center">
                         <span>Version: <span className="text-gray-900 dark:text-gray-200">v{appVersion}</span></span>
-                        {updateStatus?.available && (
-                            <button
-                                onClick={onSettings}
-                                className="ml-2 px-1.5 py-0.5 rounded text-[8px] bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 font-bold uppercase transition-colors hover:bg-blue-100 dark:hover:bg-blue-500/30"
-                                title={`Update v${updateStatus.version} available! Click to open settings.`}
-                            >
-                                Update Available 🚀
-                            </button>
+                        {updateState?.available && (
+                            <div className="ml-3 flex items-center gap-1.5 border-l border-gray-200 dark:border-gray-700 pl-3">
+                                {updateState.isReady ? (
+                                    <span className="text-emerald-500 flex items-center gap-1">
+                                        <CheckCircle2 size={10} /> RESTART TO APPLY
+                                    </span>
+                                ) : updateState.isDownloading ? (
+                                    <span className="text-blue-500 animate-pulse flex items-center gap-1">
+                                        <RotateCcw size={10} className="animate-spin" /> DOWNLOADING...
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={handleInstallUpdate}
+                                        className="px-1.5 py-0.5 rounded text-[8px] bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 font-bold uppercase transition-colors hover:bg-blue-100 dark:hover:bg-blue-500/30 flex items-center gap-1"
+                                        title={`Download and install v${updateState.version}`}
+                                    >
+                                        <Upload size={8} /> UPDATE TO v{updateState.version}
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>

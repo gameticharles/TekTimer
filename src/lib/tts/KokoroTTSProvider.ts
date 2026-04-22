@@ -19,29 +19,29 @@ export interface KokoroVoice {
 
 export const KOKORO_VOICES: KokoroVoice[] = [
     // American English — female
-    { id: 'af_bella',   label: 'Bella (US Female)',   lang: 'en-US', gender: 'female' },
-    { id: 'af_sky',     label: 'Sky (US Female)',     lang: 'en-US', gender: 'female' },
-    { id: 'af_nicole',  label: 'Nicole (US Female)',  lang: 'en-US', gender: 'female' },
-    { id: 'af_sarah',   label: 'Sarah (US Female)',   lang: 'en-US', gender: 'female' },
+    { id: 'af_bella', label: 'Bella (US Female)', lang: 'en-US', gender: 'female' },
+    { id: 'af_sky', label: 'Sky (US Female)', lang: 'en-US', gender: 'female' },
+    { id: 'af_nicole', label: 'Nicole (US Female)', lang: 'en-US', gender: 'female' },
+    { id: 'af_sarah', label: 'Sarah (US Female)', lang: 'en-US', gender: 'female' },
     { id: 'af_jessica', label: 'Jessica (US Female)', lang: 'en-US', gender: 'female' },
-    { id: 'af_nova',    label: 'Nova (US Female)',    lang: 'en-US', gender: 'female' },
-    { id: 'af_heart',   label: 'Heart (US Female)',   lang: 'en-US', gender: 'female' },
+    { id: 'af_nova', label: 'Nova (US Female)', lang: 'en-US', gender: 'female' },
+    { id: 'af_heart', label: 'Heart (US Female)', lang: 'en-US', gender: 'female' },
     // American English — male
-    { id: 'am_adam',    label: 'Adam (US Male)',      lang: 'en-US', gender: 'male' },
-    { id: 'am_michael', label: 'Michael (US Male)',   lang: 'en-US', gender: 'male' },
-    { id: 'am_echo',    label: 'Echo (US Male)',      lang: 'en-US', gender: 'male' },
-    { id: 'am_liam',    label: 'Liam (US Male)',      lang: 'en-US', gender: 'male' },
-    { id: 'am_eric',    label: 'Eric (US Male)',      lang: 'en-US', gender: 'male' },
+    { id: 'am_adam', label: 'Adam (US Male)', lang: 'en-US', gender: 'male' },
+    { id: 'am_michael', label: 'Michael (US Male)', lang: 'en-US', gender: 'male' },
+    { id: 'am_echo', label: 'Echo (US Male)', lang: 'en-US', gender: 'male' },
+    { id: 'am_liam', label: 'Liam (US Male)', lang: 'en-US', gender: 'male' },
+    { id: 'am_eric', label: 'Eric (US Male)', lang: 'en-US', gender: 'male' },
     // British English — female
-    { id: 'bf_emma',    label: 'Emma (UK Female)',    lang: 'en-GB', gender: 'female' },
-    { id: 'bf_alice',   label: 'Alice (UK Female)',   lang: 'en-GB', gender: 'female' },
+    { id: 'bf_emma', label: 'Emma (UK Female)', lang: 'en-GB', gender: 'female' },
+    { id: 'bf_alice', label: 'Alice (UK Female)', lang: 'en-GB', gender: 'female' },
     // British English — male
-    { id: 'bm_george',  label: 'George (UK Male)',    lang: 'en-GB', gender: 'male' },
-    { id: 'bm_lewis',   label: 'Lewis (UK Male)',     lang: 'en-GB', gender: 'male' },
-    { id: 'bm_daniel',  label: 'Daniel (UK Male)',    lang: 'en-GB', gender: 'male' },
+    { id: 'bm_george', label: 'George (UK Male)', lang: 'en-GB', gender: 'male' },
+    { id: 'bm_lewis', label: 'Lewis (UK Male)', lang: 'en-GB', gender: 'male' },
+    { id: 'bm_daniel', label: 'Daniel (UK Male)', lang: 'en-GB', gender: 'male' },
 ];
 
-export const DEFAULT_KOKORO_VOICE = 'af_bella';
+export const DEFAULT_KOKORO_VOICE = 'am_michael';
 
 // ── Audio output type ──────────────────────────────────────────────────────────
 
