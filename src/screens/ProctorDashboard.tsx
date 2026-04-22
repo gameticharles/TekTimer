@@ -3,6 +3,7 @@ import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCirc
 import { ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getVersion } from '@tauri-apps/api/app';
+import { check } from '@tauri-apps/plugin-updater';
 import type { AppSettings, AnyTimer, TimerPreset, ExamLogEntry, ExamTimer } from '../lib/types';
 import type { TimerStore } from '../hooks/useTimerStore';
 import { useProctorStore } from '../hooks/useProctorStore';
@@ -31,9 +32,16 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
     const [searchQuery, setSearchQuery] = useState('');
     const [showPresetSelection, setShowPresetSelection] = useState(false);
     const [appVersion, setAppVersion] = useState<string>('');
+    const [updateStatus, setUpdateStatus] = useState<{ available: boolean, version?: string } | null>(null);
 
     useEffect(() => {
         getVersion().then(setAppVersion);
+        check().then(update => {
+            if (update) setUpdateStatus({ available: true, version: update.version });
+            else setUpdateStatus({ available: false });
+        }).catch(err => {
+            console.error('Failed to check for updates on launch:', err);
+        });
     }, []);
 
     const handleExit = async () => {
@@ -907,8 +915,17 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         <span>System Health: <span className="text-emerald-500">Optimal</span></span>
                     </div>
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
-                    <div>
+                    <div className="flex items-center">
                         <span>Version: <span className="text-gray-900 dark:text-gray-200">v{appVersion}</span></span>
+                        {updateStatus?.available && (
+                            <button
+                                onClick={onSettings}
+                                className="ml-2 px-1.5 py-0.5 rounded text-[8px] bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 font-bold uppercase transition-colors hover:bg-blue-100 dark:hover:bg-blue-500/30"
+                                title={`Update v${updateStatus.version} available! Click to open settings.`}
+                            >
+                                Update Available 🚀
+                            </button>
+                        )}
                     </div>
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
                     <div>

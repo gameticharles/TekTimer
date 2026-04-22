@@ -119,7 +119,8 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                         settings.ttsProvider === 'kokoro' &&
                         payload.status === 'Running') {
                         const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 20;
-                        if (payload.remaining_seconds <= PRE_WARM_LEAD &&
+                        const WINDOW_SECONDS = 3;
+                        if (payload.remaining_seconds <= PRE_WARM_LEAD + WINDOW_SECONDS &&
                             payload.remaining_seconds > PRE_WARM_LEAD - 1) {
                             announcementQueue.preWarm(resolveTemplate(settings.endMessage, updated));
                         }
