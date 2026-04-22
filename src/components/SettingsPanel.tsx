@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw, Trash2, Images, Cpu
+    X, RotateCcw, Volume2, VolumeX, Play, Upload, Loader2, RefreshCw, Trash2, Images, Cpu, GripVertical
 } from 'lucide-react';
 import { getTTSProvider } from '../lib/tts/getTTSProvider';
 import type { AppSettings, MediaSlide } from '../lib/types';
@@ -8,7 +8,7 @@ import { SCALE_STEP, SCALE_MIN, SCALE_MAX } from '../lib/fontSizeUtils';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { exists, mkdir } from '@tauri-apps/plugin-fs';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { check } from '@tauri-apps/plugin-updater';
 import { audioManager } from '../lib/audioManager';
 import AnnouncementScheduleEditor from './AnnouncementScheduleEditor';
@@ -212,6 +212,8 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [updateMessage, setUpdateMessage] = useState<string | null>(null);
     const [isEditingDefaultSchedule, setIsEditingDefaultSchedule] = useState(false);
+    const [draggedId, setDraggedId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
 
     const handleAddDefaultMedia = async () => {
         try {
@@ -976,9 +978,73 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                 {settings.slideshowMedia.length > 0 && (
                                     <div className="space-y-2 mb-3">
                                         {settings.slideshowMedia.map((slide) => (
-                                            <div key={slide.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                                <div className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0 text-[11px] font-bold text-gray-500">
-                                                    {slide.type === 'video' ? '▶' : '🖼'}
+                                            <div
+                                                key={slide.id}
+                                                data-slide-id={slide.id}
+                                                className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
+                                                    draggedId === slide.id ? 'opacity-50 scale-[0.98]' : 'bg-gray-50 dark:bg-gray-800'
+                                                } ${
+                                                    dragOverId === slide.id ? 'border-[2px] border-violet-500 bg-violet-50 dark:bg-violet-900/20 shadow-[0_0_15px_rgba(139,92,246,0.3)]' : 'border border-gray-200 dark:border-gray-700'
+                                                }`}
+                                            >
+                                                <div 
+                                                    className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 touch-none shrink-0"
+                                                    onPointerDown={(e) => {
+                                                        e.currentTarget.setPointerCapture(e.pointerId);
+                                                        setDraggedId(slide.id);
+                                                    }}
+                                                    onPointerMove={(e) => {
+                                                        if (!draggedId) return;
+                                                        // Temporarily disable pointer-events on the grip element itself 
+                                                        // if it gets in the way of elementFromPoint
+                                                        const el = e.currentTarget;
+                                                        const prevEvents = el.style.pointerEvents;
+                                                        el.style.pointerEvents = 'none';
+
+                                                        const testEl = document.elementFromPoint(e.clientX, e.clientY);
+                                                        el.style.pointerEvents = prevEvents;
+
+                                                        const targetSlideEl = testEl?.closest('[data-slide-id]');
+                                                        if (targetSlideEl) {
+                                                            const id = targetSlideEl.getAttribute('data-slide-id');
+                                                            setDragOverId(id !== draggedId ? id : null);
+                                                        } else {
+                                                            setDragOverId(null);
+                                                        }
+                                                    }}
+                                                    onPointerUp={(e) => {
+                                                        e.currentTarget.releasePointerCapture(e.pointerId);
+                                                        if (draggedId && dragOverId && draggedId !== dragOverId) {
+                                                            const oldIndex = settings.slideshowMedia.findIndex(m => m.id === draggedId);
+                                                            const newIndex = settings.slideshowMedia.findIndex(m => m.id === dragOverId);
+                                                            if (oldIndex !== -1 && newIndex !== -1) {
+                                                                const newList = [...settings.slideshowMedia];
+                                                                const [moved] = newList.splice(oldIndex, 1);
+                                                                newList.splice(newIndex, 0, moved);
+                                                                onUpdate({ slideshowMedia: newList });
+                                                            }
+                                                        }
+                                                        setDraggedId(null);
+                                                        setDragOverId(null);
+                                                    }}
+                                                    onPointerCancel={() => {
+                                                        setDraggedId(null);
+                                                        setDragOverId(null);
+                                                    }}
+                                                >
+                                                    <GripVertical size={16} />
+                                                </div>
+                                                <div className="w-12 h-12 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0 overflow-hidden relative border border-gray-300 dark:border-gray-600">
+                                                    {slide.type === 'image' ? (
+                                                        <img src={convertFileSrc(slide.path)} alt="" className="w-full h-full object-cover pointer-events-none" />
+                                                    ) : (
+                                                        <>
+                                                            <video src={convertFileSrc(slide.path)} className="w-full h-full object-cover opacity-60 pointer-events-none" />
+                                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                <Play size={14} className="text-white drop-shadow-md" fill="currentColor" />
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{slide.name}</p>

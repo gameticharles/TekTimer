@@ -83,28 +83,28 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
     const slides = isManuallyShown ? slideshowMedia : phaseSlides;
 
     // ── Core state ─────────────────────────────────────────────────────────
-    const [playMode, setPlayMode]       = useState<PlayMode>('idle');
+    const [playMode, setPlayMode] = useState<PlayMode>('idle');
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [cyclesLeft, setCyclesLeft]   = useState(0);
+    const [cyclesLeft, setCyclesLeft] = useState(0);
     /** true = showing the black overlay; false = showing the grid gap (pause) */
     const [overlayVisible, setOverlayVisible] = useState(false);
     /** true = in the inter-slide pause gap */
-    const [isPausing, setIsPausing]     = useState(false);
+    const [isPausing, setIsPausing] = useState(false);
     /** Whether the image has faded in */
-    const [imgVisible, setImgVisible]   = useState(false);
+    const [imgVisible, setImgVisible] = useState(false);
 
     // ── Refs ───────────────────────────────────────────────────────────────
-    const seqTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const prevPhaseRef  = useRef<SlidePhase | null>(null);
-    const playModeRef   = useRef<PlayMode>('idle');
+    const seqTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const prevPhaseRef = useRef<SlidePhase | null>(null);
+    const playModeRef = useRef<PlayMode>('idle');
 
     // Keep ref in sync so callbacks don't get stale
     playModeRef.current = playMode;
 
     // ── Prefetch ───────────────────────────────────────────────────────────
-    const safeIndex  = slides.length > 0 ? currentIndex % slides.length : 0;
+    const safeIndex = slides.length > 0 ? currentIndex % slides.length : 0;
     const currentSlide = slides[safeIndex] ?? null;
-    const nextSlide  = slides.length > 1 ? slides[(safeIndex + 1) % slides.length] : null;
+    const nextSlide = slides.length > 1 ? slides[(safeIndex + 1) % slides.length] : null;
 
     const mediaSrc = useMediaSrc(playMode !== 'idle' && !isPausing ? currentSlide : null);
     useMediaSrc(nextSlide); // background prefetch
@@ -154,7 +154,7 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
                 setCurrentIndex(nextIdx);
                 // scheduleNext will be re-triggered by the useEffect that watches currentIndex / playMode
             }, (slideshowPauseDuration ?? 5) * 1000);
-        }, (slideshowSlideDuration ?? 5) * 1000);
+        }, (slideshowSlideDuration ?? 10) * 1000);
     }, [slides.length, slideshowSlideDuration, slideshowPauseDuration, clearSeqTimer]);
 
     // ── Start a fresh run ──────────────────────────────────────────────────
@@ -188,7 +188,7 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
         if (slides.length === 0) return;
         scheduleNext(safeIndex, cyclesLeft, playMode);
         return clearSeqTimer;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentIndex, playMode]);
 
     // ── Fade image in once src is ready ───────────────────────────────────
@@ -227,7 +227,7 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
             // New phase window opened and this phase is enabled → fire
             startRun('cycle', slideshowCycles ?? 3);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [phase, timers]);
 
     // ── Manual trigger ─────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
         } else {
             startRun('cycle', slideshowCycles ?? 3);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isManuallyShown]);
 
     // ── Dismiss ────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ export default function ExamSlideshow({ settings, timers, isManuallyShown, onMan
     if (!overlayVisible || !currentSlide || isPausing) return null;
 
     const backdropAlpha = slideshowOpacity / 100;
-    const cycleLabel    = playMode === 'infinite'
+    const cycleLabel = playMode === 'infinite'
         ? '∞'
         : playMode === 'cycle'
             ? `${cyclesLeft} cycle${cyclesLeft !== 1 ? 's' : ''} left`
