@@ -1,5 +1,13 @@
 ## [0.6.0] - 2026-04-22
 
+- fix error (6fbda67)
+- added tts voice (8858801)
+- implemented auto check for update (6d367c1)
+- implemented chck updates and fixed end state voice timing (e9b544e)
+- fixed drag and drop (53aeac0)
+- implemented tts (2fbe18f)
+## [0.6.0] - 2026-04-22
+
 - implemented auto check for update (6d367c1)
 - implemented chck updates and fixed end state voice timing (e9b544e)
 - fixed drag and drop (53aeac0)
@@ -88,6 +96,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
