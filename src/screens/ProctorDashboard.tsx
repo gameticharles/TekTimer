@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X, Database } from 'lucide-react';
+import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X, Database, Upload } from 'lucide-react';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getVersion } from '@tauri-apps/api/app';
