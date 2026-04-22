@@ -1,3 +1,9 @@
+## [0.6.0] - 2026-04-22
+
+- implemented auto check for update (6d367c1)
+- implemented chck updates and fixed end state voice timing (e9b544e)
+- fixed drag and drop (53aeac0)
+- implemented tts (2fbe18f)
 ## [0.5.9] - 2026-04-17
 
 - fixed slideshow (56f786f)
@@ -82,6 +88,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
