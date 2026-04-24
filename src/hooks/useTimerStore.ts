@@ -118,7 +118,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                     if (settings.announcementsEnabled &&
                         settings.ttsProvider === 'kokoro' &&
                         payload.status === 'Running') {
-                        const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 20;
+                        const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 120;
                         const WINDOW_SECONDS = 3;
                         if (payload.remaining_seconds <= PRE_WARM_LEAD + WINDOW_SECONDS &&
                             payload.remaining_seconds > PRE_WARM_LEAD - 1) {
@@ -145,7 +145,7 @@ export function useTimerStore(settings: AppSettings, onLog?: (type: ExamLogEntry
                             if (!entry.enabled || entry.hasBeenSpoken) return entry;
 
                             const WINDOW_SECONDS = 3;
-                            const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 20;
+                            const PRE_WARM_LEAD = settings.kokoroPreWarmLeadSeconds ?? 120;
 
                             // Pre-warm Kokoro N seconds before the announcement fires
                             if (settings.ttsProvider === 'kokoro' &&

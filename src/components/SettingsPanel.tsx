@@ -80,17 +80,16 @@ function KokoroVoiceSelector({ settings, onUpdate }: { settings: AppSettings, on
     };
 
     // Group voices by language
-    const usVoices  = KOKORO_VOICES.filter(v => v.lang === 'en-US');
-    const gbVoices  = KOKORO_VOICES.filter(v => v.lang === 'en-GB');
+    const usVoices = KOKORO_VOICES.filter(v => v.lang === 'en-US');
+    const gbVoices = KOKORO_VOICES.filter(v => v.lang === 'en-GB');
 
     return (
         <div className="space-y-3">
             {/* Model status badge */}
-            <div className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold ${
-                modelLoaded
+            <div className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold ${modelLoaded
                     ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
                     : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
-            }`}>
+                }`}>
                 <div className="flex items-center gap-1.5">
                     <Cpu size={13} />
                     {modelLoaded ? 'Model loaded — ready' : 'Model not yet loaded (~86 MB, one-time download)'}
@@ -135,22 +134,21 @@ function KokoroVoiceSelector({ settings, onUpdate }: { settings: AppSettings, on
                     Pre-generate Audio Before Trigger
                 </label>
                 <div className="flex gap-1.5">
-                    {[5, 10, 20, 30, 45].map(s => (
+                    {[30, 45, 60, 120, 180, 300].map(s => (
                         <button
                             key={s}
                             onClick={() => onUpdate({ kokoroPreWarmLeadSeconds: s })}
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                                (settings.kokoroPreWarmLeadSeconds ?? 20) === s
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${(settings.kokoroPreWarmLeadSeconds ?? 120) === s
                                     ? 'bg-emerald-600 border-emerald-600 text-white'
                                     : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-500/50'
-                            }`}
+                                }`}
                         >
                             {s}s
                         </button>
                     ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                    Starts generating audio {settings.kokoroPreWarmLeadSeconds ?? 20}s before the announcement fires so it plays instantly.
+                    Starts generating audio {settings.kokoroPreWarmLeadSeconds ?? 120}s before the announcement fires so it plays instantly.
                 </p>
             </div>
         </div>
@@ -729,11 +727,10 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                                 <button
                                                     key={n}
                                                     onClick={() => onUpdate({ announcementRepeatCount: n })}
-                                                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
-                                                        (settings.announcementRepeatCount ?? 1) === n
+                                                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${(settings.announcementRepeatCount ?? 1) === n
                                                             ? 'bg-emerald-600 border-emerald-600 text-white'
                                                             : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-emerald-500/50'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {n}×
                                                 </button>
@@ -860,11 +857,10 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                             <button
                                                 key={s}
                                                 onClick={() => onUpdate({ slideshowSlideDuration: s })}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                    settings.slideshowSlideDuration === s
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${settings.slideshowSlideDuration === s
                                                         ? 'bg-violet-600 text-white'
                                                         : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                                }`}
+                                                    }`}
                                             >{s}s</button>
                                         ))}
                                     </div>
@@ -879,11 +875,10 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                             <button
                                                 key={s}
                                                 onClick={() => onUpdate({ slideshowPauseDuration: s })}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                    (settings.slideshowPauseDuration ?? 5) === s
+                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${(settings.slideshowPauseDuration ?? 5) === s
                                                         ? 'bg-violet-600 text-white'
                                                         : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                                }`}
+                                                    }`}
                                             >{s}s</button>
                                         ))}
                                     </div>
@@ -981,13 +976,11 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                             <div
                                                 key={slide.id}
                                                 data-slide-id={slide.id}
-                                                className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
-                                                    draggedId === slide.id ? 'opacity-50 scale-[0.98]' : 'bg-gray-50 dark:bg-gray-800'
-                                                } ${
-                                                    dragOverId === slide.id ? 'border-[2px] border-violet-500 bg-violet-50 dark:bg-violet-900/20 shadow-[0_0_15px_rgba(139,92,246,0.3)]' : 'border border-gray-200 dark:border-gray-700'
-                                                }`}
+                                                className={`flex items-center gap-2 p-2 rounded-lg transition-all ${draggedId === slide.id ? 'opacity-50 scale-[0.98]' : 'bg-gray-50 dark:bg-gray-800'
+                                                    } ${dragOverId === slide.id ? 'border-[2px] border-violet-500 bg-violet-50 dark:bg-violet-900/20 shadow-[0_0_15px_rgba(139,92,246,0.3)]' : 'border border-gray-200 dark:border-gray-700'
+                                                    }`}
                                             >
-                                                <div 
+                                                <div
                                                     className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 touch-none shrink-0"
                                                     onPointerDown={(e) => {
                                                         e.currentTarget.setPointerCapture(e.pointerId);
@@ -1063,7 +1056,7 @@ export default function SettingsPanel({ settings, onUpdate, onReset, onClose }: 
                                                                 className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase transition-colors ${slide.phases.includes(phase)
                                                                     ? phase === 'start' ? 'bg-blue-500 text-white' : phase === 'middle' ? 'bg-gray-500 text-white' : 'bg-amber-500 text-white'
                                                                     : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
-                                                                }`}
+                                                                    }`}
                                                             >{phase}</button>
                                                         ))}
                                                     </div>

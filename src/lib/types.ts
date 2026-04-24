@@ -210,7 +210,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     customTTSVoice: 'Jasper',
 
     kokoroVoiceId: 'af_bella',
-    kokoroPreWarmLeadSeconds: 20,
+    kokoroPreWarmLeadSeconds: 120,
 
     llmEnabled: false,
     llmProvider: null,
