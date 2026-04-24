@@ -1,3 +1,8 @@
+## [0.6.2] - 2026-04-24
+
+- fixed updater (f331cc0)
+- Key Improvements: Automatic Quit to Install: The app now automatically closes after the update download is complete, ensuring the installer can proceed immediately. Unified Logic: Refactored the update handling into a consolidated handleCheckUpdate function that manages the entire lifecycle (check -> download -> install -> quit). Status Bar Integration: Added a manual "Check for Updates" button (refresh icon) next to the version number. Integrated real-time status messages (e.g., "Checking...", "Downloading...", "Restarting...") and a loading spinner directly into the status bar. Toast Notifications: Enhanced the update toast with the same unified logic and better progress feedback. (a22d0ad)
+- feat: increased the pre warm selections (6772140)
 ## [0.6.1] - 2026-04-22
 
 - Initial release
@@ -96,6 +101,7 @@ TekTimer first release
 ## [0.1.0] - 2026-02-26
 
 TekTimer first release
+
 
 
 
