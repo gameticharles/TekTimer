@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X, Database, Upload } from 'lucide-react';
+import { Play, Pause, Settings, MoreVertical, CheckCircle2, AlertTriangle, XCircle, Clock, Search, FolderPlus, RotateCcw, Trash2, BookOpen, ClipboardList, X, Database, Upload, Loader2, RefreshCw } from 'lucide-react';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getVersion } from '@tauri-apps/api/app';
@@ -39,31 +39,62 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
         isReady?: boolean;
         updateObj?: any;
     } | null>(null);
+    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+    const [updateMessage, setUpdateMessage] = useState<string | null>(null);
     const [showUpdateToast, setShowUpdateToast] = useState(false);
 
     useEffect(() => {
         getVersion().then(setAppVersion);
-        check().then(update => {
+        handleCheckUpdate(true); // Silent check on launch
+    }, []);
+
+    const handleCheckUpdate = async (silent = false) => {
+        try {
+            if (!silent) {
+                setIsCheckingUpdate(true);
+                setUpdateMessage("Checking for updates...");
+            }
+            const update = await check();
             if (update) {
                 setUpdateState({ available: true, version: update.version, updateObj: update });
-                setShowUpdateToast(true);
+                if (silent) {
+                    setShowUpdateToast(true);
+                } else {
+                    setUpdateMessage(`Downloading v${update.version}...`);
+                    setUpdateState(prev => prev ? { ...prev, isDownloading: true } : null);
+                    await update.downloadAndInstall();
+                    setUpdateMessage("Update installed! Restarting...");
+                    setUpdateState(prev => prev ? { ...prev, isDownloading: false, isReady: true } : null);
+                    // Automatic quit to install
+                    await getCurrentWindow().close();
+                }
             } else {
                 setUpdateState({ available: false });
+                if (!silent) setUpdateMessage("You are up to date!");
             }
-        }).catch(err => {
-            console.error('Failed to check for updates on launch:', err);
-        });
-    }, []);
+        } catch (error) {
+            console.error("Updater error:", error);
+            if (!silent) setUpdateMessage(`Failed: ${String(error)}`);
+            else alert(`Update check failed: ${String(error)}`);
+        } finally {
+            if (!silent) setIsCheckingUpdate(false);
+        }
+    };
 
     const handleInstallUpdate = async () => {
         if (!updateState?.updateObj) return;
         try {
             setUpdateState(prev => prev ? { ...prev, isDownloading: true } : null);
+            setUpdateMessage(`Downloading v${updateState.version}...`);
             await updateState.updateObj.downloadAndInstall();
             setUpdateState(prev => prev ? { ...prev, isDownloading: false, isReady: true } : null);
+            setUpdateMessage("Update installed! Restarting...");
+            // Automatic quit to install
+            await getCurrentWindow().close();
         } catch (error) {
             console.error("Updater error:", error);
             setUpdateState(prev => prev ? { ...prev, isDownloading: false } : null);
+            setUpdateMessage(`Failed: ${String(error)}`);
             alert(`Failed to download update: ${String(error)}`);
         }
     };
@@ -953,36 +984,43 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         </button>
                     </div>
 
-                    <div className="mt-4 flex items-center gap-2">
-                        {updateState.isReady ? (
-                            <button
-                                onClick={() => getCurrentWindow().close()}
-                                className="flex-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors"
-                            >
-                                Restart Now
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleInstallUpdate}
-                                disabled={updateState.isDownloading}
-                                className="flex-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white disabled:bg-blue-500/50 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2"
-                            >
-                                {updateState.isDownloading ? (
-                                    <>
-                                        <RotateCcw size={12} className="animate-spin" /> Downloading...
-                                    </>
-                                ) : (
-                                    "Download & Install"
-                                )}
-                            </button>
-                        )}
-                        {!updateState.isDownloading && !updateState.isReady && (
-                            <button
-                                onClick={() => setShowUpdateToast(false)}
-                                className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs font-bold transition-colors"
-                            >
-                                Later
-                            </button>
+                    <div className="mt-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                            {updateState.isReady ? (
+                                <button
+                                    onClick={() => getCurrentWindow().close()}
+                                    className="flex-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors"
+                                >
+                                    Restart Now
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleInstallUpdate}
+                                    disabled={updateState.isDownloading}
+                                    className="flex-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white disabled:bg-blue-500/50 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {updateState.isDownloading ? (
+                                        <>
+                                            <Loader2 size={12} className="animate-spin" /> Downloading...
+                                        </>
+                                    ) : (
+                                        "Download & Install"
+                                    )}
+                                </button>
+                            )}
+                            {!updateState.isDownloading && !updateState.isReady && (
+                                <button
+                                    onClick={() => setShowUpdateToast(false)}
+                                    className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xs font-bold transition-colors"
+                                >
+                                    Later
+                                </button>
+                            )}
+                        </div>
+                        {updateMessage && (
+                            <p className="text-[10px] text-center text-gray-500 italic animate-pulse">
+                                {updateMessage}
+                            </p>
                         )}
                     </div>
                 </div>
@@ -996,13 +1034,13 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                         <span>System Health: <span className="text-emerald-500">Optimal</span></span>
                     </div>
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1.5 min-w-[120px]">
                         <span>Version: <span className="text-gray-900 dark:text-gray-200">v{appVersion}</span></span>
-                        {updateState?.available && (
+                        {updateState?.available ? (
                             <div className="ml-3 flex items-center gap-1.5 border-l border-gray-200 dark:border-gray-700 pl-3">
                                 {updateState.isReady ? (
                                     <span className="text-emerald-500 flex items-center gap-1">
-                                        <CheckCircle2 size={10} /> RESTART TO APPLY
+                                        <CheckCircle2 size={10} /> RESTARTING...
                                     </span>
                                 ) : updateState.isDownloading ? (
                                     <span className="text-blue-500 animate-pulse flex items-center gap-1">
@@ -1018,6 +1056,20 @@ export default function ProctorDashboard({ settings, onUpdateSettings, onSetting
                                     </button>
                                 )}
                             </div>
+                        ) : (
+                            <button
+                                onClick={() => handleCheckUpdate(false)}
+                                disabled={isCheckingUpdate}
+                                className="ml-2 p-1 text-gray-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+                                title="Check for updates"
+                            >
+                                {isCheckingUpdate ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                            </button>
+                        )}
+                        {updateMessage && !updateState?.isDownloading && (
+                            <span className="ml-3 text-[9px] text-gray-400 font-normal lowercase italic border-l border-gray-200 dark:border-gray-700 pl-3 truncate max-w-[150px]">
+                                {updateMessage}
+                            </span>
                         )}
                     </div>
                     <div className="w-px h-3 bg-gray-200 dark:bg-gray-700"></div>
